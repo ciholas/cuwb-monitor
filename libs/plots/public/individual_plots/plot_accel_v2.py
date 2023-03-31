@@ -5,7 +5,7 @@
 from functools import partial
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtWidgets, QtCore
 
 # Local libraries
 from cdp import AccelerometerV2
@@ -13,17 +13,17 @@ from network_objects import *
 from settings import *
 
 
-class PlotAccelV2(QtGui.QMainWindow):
+class PlotAccelV2(QtWidgets.QMainWindow):
     type = AccelerometerV2.type
 
     def __init__(self, serial):
 
-        QtGui.QMainWindow.__init__(self)
+        QtWidgets.QMainWindow.__init__(self)
 
-        self.central = QtGui.QWidget()  #This will be our central widget
+        self.central = QtWidgets.QWidget()  #This will be our central widget
         self.serial = serial
         self.setWindowTitle('CUWB Monitor - Accelerometer V2 Devices ID: 0x{:08X}'.format(serial))
-        self.grid_layout = QtGui.QGridLayout()
+        self.grid_layout = QtWidgets.QGridLayout()
         self.running = True
 
         self.sub_windows = dict([])
@@ -38,10 +38,10 @@ class PlotAccelV2(QtGui.QMainWindow):
         self.from_ids = np.array([])
         self.previous_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[self.type] - len(UwbNetwork.nodes[self.serial].cdp_pkts[self.type])
 
-        self.grid_layout.addWidget(QtGui.QLabel("Serial#"), 0, 0)
-        self.grid_layout.addWidget(QtGui.QLabel("Packet Count"), 0, 1)
-        self.grid_layout.addWidget(QtGui.QLabel("Frequency"), 0, 2)
-        self.grid_layout.addWidget(QtGui.QLabel("Print"), 0, 3)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Serial#"), 0, 0)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Packet Count"), 0, 1)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Frequency"), 0, 2)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Print"), 0, 3)
 
         self.update_labels()
 
@@ -70,10 +70,10 @@ class PlotAccelV2(QtGui.QMainWindow):
         for idx in range(_current_size):
             _target_id = UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size].serial_number.as_int
             if not (_target_id in self.from_ids):
-                self.from_id_id_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_count_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_freq_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_enable_checks.update([(self.id_total, QtGui.QCheckBox())])
+                self.from_id_id_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_count_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_freq_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_enable_checks.update([(self.id_total, QtWidgets.QCheckBox())])
                 self.from_id_frequency_deques.update([(_target_id, deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH))])
                 self.from_id_count.update([(_target_id, 0)])
                 self.from_ids = np.sort(np.append(self.from_ids, _target_id))
@@ -87,10 +87,10 @@ class PlotAccelV2(QtGui.QMainWindow):
 
                 if _column > 0:
                     _row = 2
-                    self.grid_layout.addWidget(QtGui.QLabel("Serial#"), _row, _column + 0)
-                    self.grid_layout.addWidget(QtGui.QLabel("Packet Count"), _row, _column + 1)
-                    self.grid_layout.addWidget(QtGui.QLabel("Frequency"), _row, _column + 2)
-                    self.grid_layout.addWidget(QtGui.QLabel("Enable"), _row, _column + 3)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Serial#"), _row, _column + 0)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Packet Count"), _row, _column + 1)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Frequency"), _row, _column + 2)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Enable"), _row, _column + 3)
                 self.id_total += 1
 
             self.from_id_count[_target_id] += 1
@@ -111,13 +111,13 @@ class PlotAccelV2(QtGui.QMainWindow):
                 self.sub_windows[_target_id].update_data(_x, _y, _z, _time)
 
         for _target_id in self.from_ids:
-            self.from_id_frequency_deques[_target_id].append((self.from_id_count[_target_id], time.time()))
+            self.from_id_frequency_deques[_target_id].append((self.from_id_count[_target_id], time.monotonic()))
 
         for _row in range(self.id_total):
             _target_id = int(self.from_ids[_row])
             if self.from_id_id_labels[_row].text() != '0x{:08X}'.format(_target_id):
                 self.from_id_id_labels[_row].setText('0x{:08X}'.format(_target_id))
-                self.from_id_id_labels[_row].setStyleSheet('color:blue')
+                self.from_id_id_labels[_row].setStyleSheet(GetClickableColor())
                 self.from_id_id_labels[_row].mouseReleaseEvent = partial(self.labelClickEvent, _target_id)
 
             _freq = UwbNetwork.nodes[self.serial].calculate_frequency(self.from_id_frequency_deques[_target_id])
@@ -126,6 +126,7 @@ class PlotAccelV2(QtGui.QMainWindow):
 
     def labelClickEvent(self, serial, e):
         self.sub_windows.update([(serial, PlotAccelV2SubWindow(serial, self))])
+        self.sub_windows[serial].show()
 
     def reset(self):
         for target_id in self.from_ids:
@@ -136,10 +137,10 @@ class PlotAccelV2(QtGui.QMainWindow):
         self.previous_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[self.type]
 
 
-class PlotAccelV2SubWindow(pg.GraphicsWindow):
+class PlotAccelV2SubWindow(pg.GraphicsLayoutWidget):
     def __init__(self, serial, parent):
 
-        pg.GraphicsWindow.__init__(self)
+        pg.GraphicsLayoutWidget.__init__(self)
         self.setWindowTitle('CUWB Monitor - Accel V2 Plot ID: 0x{:08X}'.format(serial))
         self.serial = serial
         self.resize(1200, 400)
@@ -167,9 +168,10 @@ class PlotAccelV2SubWindow(pg.GraphicsWindow):
             self.close()
             return
 
-        self.plot_x.setData(self.t_data, self.x_data)
-        self.plot_y.setData(self.t_data, self.y_data)
-        self.plot_z.setData(self.t_data, self.z_data)
+        if len(self.t_data) > 1:
+            self.plot_x.setData(self.t_data, self.x_data)
+            self.plot_y.setData(self.t_data, self.y_data)
+            self.plot_z.setData(self.t_data, self.z_data)
 
     def update_data(self, x, y, z, t):
 

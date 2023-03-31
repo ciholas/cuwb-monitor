@@ -5,7 +5,7 @@
 from functools import partial
 import netifaces
 from operator import attrgetter
-from pyqtgraph import QtCore, QtGui
+from pyqtgraph import QtCore, QtWidgets, QtGui
 import time
 
 # Local libraries
@@ -15,14 +15,14 @@ from settings import *
 from socket_processing import SocketProcessing, CdpProcess
 
 
-class NetworkDiscoveryWindow(QtGui.QMainWindow):
+class NetworkDiscoveryWindow(QtWidgets.QMainWindow):
 
     def __init__(self, num_processes, ip, port, ifc):
         super().__init__()
         self.setWindowTitle("CUWB Monitor - Network Discovery")
-        self.central = QtGui.QWidget()
-        self.central.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
-        self.central_layout = QtGui.QVBoxLayout()
+        self.central = QtWidgets.QWidget()
+        self.central.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        self.central_layout = QtWidgets.QVBoxLayout()
         self.central.setLayout(self.central_layout)
         self.setCentralWidget(self.central)
 
@@ -65,12 +65,12 @@ class NetworkDiscoveryWindow(QtGui.QMainWindow):
             exit()
 
     def display_cuwb_networks(self):
-        label = QtGui.QLabel("Select a network:")
-        label.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
+        label = QtWidgets.QLabel("Select a network:")
+        label.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         self.central_layout.addWidget(label)
-        self.scroll_area = QtGui.QScrollArea()
-        self.scroll_area.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
-        self.scroll_area.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Sunken)
+        self.scroll_area = QtWidgets.QScrollArea()
+        self.scroll_area.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        self.scroll_area.setFrameStyle(QtWidgets.QFrame.Panel | QtWidgets.QFrame.Sunken)
         self.scroll_area.setBackgroundRole(QtGui.QPalette.Light)
         self.scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -80,14 +80,14 @@ class NetworkDiscoveryWindow(QtGui.QMainWindow):
         self.display_active_addresses_widget()
 
     def display_cuwb_networks_widget(self):
-        self.cuwb_nets = QtGui.QWidget()
-        self.cuwb_nets.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Maximum)
-        nets_layout = QtGui.QVBoxLayout()
+        self.cuwb_nets = QtWidgets.QWidget()
+        self.cuwb_nets.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Maximum)
+        nets_layout = QtWidgets.QVBoxLayout()
         self.cuwb_nets.setLayout(nets_layout)
         self.scroll_area.setWidget(self.cuwb_nets)
 
         if len(self.network_discovery.available_networks) == 0:
-            label = QtGui.QLabel("No CUWB networks are available")
+            label = QtWidgets.QLabel("No CUWB networks are available")
             label.setStyleSheet('color: red')
             nets_layout.addWidget(label, QtCore.Qt.AlignCenter)
         else:
@@ -104,26 +104,26 @@ class NetworkDiscoveryWindow(QtGui.QMainWindow):
             self.any_interface_streams = dict()
             for serial, net_info in sorted(self.network_discovery.available_networks.items(),
                                             key=lambda item: (item[1].instance_name, item[1].hostname, item[1].source_ip)):
-                cuwb_net = QtGui.QFrame()
-                cuwb_net.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Raised)
+                cuwb_net = QtWidgets.QFrame()
+                cuwb_net.setFrameStyle(QtWidgets.QFrame.StyledPanel | QtWidgets.QFrame.Raised)
                 cuwb_net.setLineWidth(1)
-                net_layout = QtGui.QGridLayout()
-                net_layout.setMargin(0)
+                net_layout = QtWidgets.QGridLayout()
+                net_layout.setSpacing(0)
                 cuwb_net.setLayout(net_layout)
 
-                header = QtGui.QWidget()
-                header_layout = QtGui.QGridLayout()
+                header = QtWidgets.QWidget()
+                header_layout = QtWidgets.QGridLayout()
                 header.setLayout(header_layout)
-                label = QtGui.QLabel('Network: <b>{} ({})</b>'.format(net_info.instance_name, serial))
+                label = QtWidgets.QLabel('Network: <b>{} ({})</b>'.format(net_info.instance_name, serial))
                 header_layout.addWidget(label, 0, 0)
-                label = QtGui.QLabel('Host: <b>{}</b>'.format(net_info.hostname))
+                label = QtWidgets.QLabel('Host: <b>{}</b>'.format(net_info.hostname))
                 header_layout.addWidget(label, 0, 1)
-                label = QtGui.QLabel('{}'.format(net_info.source_ip))
+                label = QtWidgets.QLabel('{}'.format(net_info.source_ip))
                 header_layout.addWidget(label, 0, 2, QtCore.Qt.AlignRight)
                 net_layout.addWidget(header, 0, 0)
 
-                streams = QtGui.QWidget()
-                streams_layout = QtGui.QGridLayout()
+                streams = QtWidgets.QWidget()
+                streams_layout = QtWidgets.QGridLayout()
                 streams.setLayout(streams_layout)
                 idx = 0
                 stream_order = ['external', 'internal', 'config', 'debug']
@@ -133,16 +133,16 @@ class NetworkDiscoveryWindow(QtGui.QMainWindow):
                     if stream_name not in net_info.cdp_streams:
                         continue
                     stream = net_info.cdp_streams[stream_name]
-                    label = QtGui.QLabel('{}'.format(stream.alias.capitalize()))
+                    label = QtWidgets.QLabel('{}'.format(stream.alias.capitalize()))
                     streams_layout.addWidget(label, idx, 0)
-                    label = QtGui.QLabel('{}/{}'.format(stream.interface, stream.netmask))
+                    label = QtWidgets.QLabel('{}/{}'.format(stream.interface, stream.netmask))
                     streams_layout.addWidget(label, idx, 1)
-                    label = QtGui.QLabel('->')
+                    label = QtWidgets.QLabel('->')
                     streams_layout.addWidget(label, idx, 2, QtCore.Qt.AlignCenter)
-                    label = QtGui.QLabel('{}:{}'.format(stream.ip, stream.port))
+                    label = QtWidgets.QLabel('{}:{}'.format(stream.ip, stream.port))
                     streams_layout.addWidget(label, idx, 3)
                     # Add CDP stream checkbox and connect Qt signal to callback function to handle state changes
-                    self.stream_checkboxes[self.stream_idx] = QtGui.QCheckBox()
+                    self.stream_checkboxes[self.stream_idx] = QtWidgets.QCheckBox()
                     self.stream_checkboxes[self.stream_idx].stateChanged.connect(partial(self.stream_click_event, self.stream_idx))
                     streams_layout.addWidget(self.stream_checkboxes[self.stream_idx], idx, 4, QtCore.Qt.AlignRight)
 
@@ -182,15 +182,15 @@ class NetworkDiscoveryWindow(QtGui.QMainWindow):
                 nets_layout.addWidget(cuwb_net)
 
     def display_active_addresses_widget(self):
-        self.addr_widget = QtGui.QWidget()
-        self.addr_widget.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
-        addr_layout = QtGui.QVBoxLayout()
+        self.addr_widget = QtWidgets.QWidget()
+        self.addr_widget.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        addr_layout = QtWidgets.QVBoxLayout()
         self.addr_widget.setLayout(addr_layout)
         if len(self.active_addresses) > 0:
-            label = QtGui.QLabel('Currently listening on:')
+            label = QtWidgets.QLabel('Currently listening on:')
             addr_layout.addWidget(label)
         for stream in sorted(self.active_addresses, key=attrgetter('ip', 'port', 'interface')):
-            label = QtGui.QLabel('{}:{} - Interface: {}'.format(stream.ip, stream.port, stream.interface))
+            label = QtWidgets.QLabel('{}:{} - Interface: {}'.format(stream.ip, stream.port, stream.interface))
             addr_layout.addWidget(label)
         self.central_layout.addWidget(self.addr_widget)
 
@@ -268,7 +268,7 @@ class NetworkDiscoveryWindow(QtGui.QMainWindow):
         for listen_addr in stream.equivalent_addresses:
             if listen_addr in self.rx_threads:
                 for thread in self.rx_threads[listen_addr]:
-                   thread.wait()
+                    thread.wait()
                 del self.rx_threads[listen_addr]
                 self.set_address_to_inactive(listen_addr)
         if stream.interface == StreamInformation.any_interface:
@@ -296,8 +296,8 @@ class NetworkDiscoveryWindow(QtGui.QMainWindow):
         new_cuwb_nets = set(self.network_discovery.available_networks.values())
         # Only refresh if the list of available networks changed
         if self.previous_cuwb_nets != new_cuwb_nets:
-             self.previous_cuwb_nets = set(new_cuwb_nets)
-             self.refresh_cuwb_networks_widget()
+            self.previous_cuwb_nets = set(new_cuwb_nets)
+            self.refresh_cuwb_networks_widget()
 
     def closeEvent(self, e):
         # The window is only closed when the main window is closed.

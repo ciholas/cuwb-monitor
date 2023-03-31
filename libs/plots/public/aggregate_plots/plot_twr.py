@@ -5,7 +5,7 @@
 import numpy as np
 import pyqtgraph as pg
 from collections import deque
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtWidgets, QtCore
 
 # Local libraries
 from network_objects import *
@@ -36,7 +36,7 @@ class PlotTwr(pg.LayoutWidget):
         self.ant_delay_box.setMaximumWidth(150)
         self.addWidget(self.ant_delay_box, row=0, col=2)
 
-        self.add_button = QtGui.QPushButton('Add')
+        self.add_button = QtWidgets.QPushButton('Add')
         self.add_button.clicked.connect(self.add_plot)
         self.addWidget(self.add_button, row=0, col=3)
 
@@ -234,7 +234,7 @@ class PlotTwr(pg.LayoutWidget):
                                                           self.calculate_twr(_pairs_idx),
                                                           _node_b])
 
-            if len(self.ordered_data[_pairs_idx]) > 0:
+            if len(self.ordered_data[_pairs_idx]) > 1 and False in np.isnan(np.array(self.ordered_data[_pairs_idx])[:,3]):
                 self.plot_line[_pairs_idx].setData(np.array(self.ordered_data[_pairs_idx])[:,2], np.array(self.ordered_data[_pairs_idx])[:,3])
 
     def calculate_twr(self, pair_idx):

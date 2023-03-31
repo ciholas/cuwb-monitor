@@ -4,7 +4,7 @@
 # System libraries
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtCore
 
 # Local libraries
 from cdp import LPSPressureV1
@@ -12,12 +12,12 @@ from network_objects import *
 from settings import *
 
 
-class PlotPressure(pg.GraphicsWindow):
+class PlotPressure(pg.GraphicsLayoutWidget):
     type = LPSPressureV1.type
 
     def __init__(self, serial):
 
-        pg.GraphicsWindow.__init__(self)
+        pg.GraphicsLayoutWidget.__init__(self)
 
         self.setWindowTitle('CUWB Monitor - Pressure Plot ID: 0x{:08X}'.format(serial))
         self.resize(900, 500)
@@ -53,8 +53,14 @@ class PlotPressure(pg.GraphicsWindow):
             self.data.append(UwbNetwork.nodes[self.serial].cdp_pkts[LPSPressureV1.type][idx - _current_size].pressure / 4096.0)
             self.time.append(UwbNetwork.nodes[self.serial].cdp_pkts_time[LPSPressureV1.type][idx - _current_size])
 
-        self.pressure.setData(np.array(self.time), np.array(self.data))
+        if len(self.time) > 1:
+            self.pressure.setData(np.array(self.time), np.array(self.data))
 
     def closeEvent(self, e):
         self.killTimer(self.timer)
         self.close()
+
+    def reset(self):
+        self.last_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[LPSPressureV1.type]
+        self.data.clear()
+        self.time.clear()

@@ -4,7 +4,7 @@
 # System libraries
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtCore
 
 # Local libraries
 from cdp import LPSTemperatureV1
@@ -12,12 +12,12 @@ from network_objects import *
 from settings import *
 
 
-class PlotTemperature(pg.GraphicsWindow):
+class PlotTemperature(pg.GraphicsLayoutWidget):
     type = LPSTemperatureV1.type
 
     def __init__(self, serial):
 
-        pg.GraphicsWindow.__init__(self)
+        pg.GraphicsLayoutWidget.__init__(self)
 
         self.setWindowTitle('CUWB Monitor - Temperature Plot ID: 0x{:08X}'.format(serial))
         self.resize(900,500)
@@ -48,13 +48,21 @@ class PlotTemperature(pg.GraphicsWindow):
         _current_size = UwbNetwork.nodes[self.serial].cdp_pkts_count[LPSTemperatureV1.type] - self.last_count
         self.last_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[LPSTemperatureV1.type]
         if _current_size == 0: return
+        elif _current_size > TRAIL_LENGTH:
+            _current_size == TRAIL_LENGTH;
 
         for idx in range(_current_size):
             self.data.append(UwbNetwork.nodes[self.serial].cdp_pkts[LPSTemperatureV1.type][idx - _current_size].temperature / 480.0 + 42.5)
             self.time.append(UwbNetwork.nodes[self.serial].cdp_pkts_time[LPSTemperatureV1.type][idx - _current_size])
 
-        self.temperature.setData(np.array(self.time), np.array(self.data))
+        if len(self.time) > 1:
+            self.temperature.setData(np.array(self.time), np.array(self.data))
 
     def closeEvent(self, e):
         self.killTimer(self.timer)
         self.close()
+
+    def reset(self):
+        self.last_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[LPSTemperatureV1.type]
+        self.data.clear()
+        self.time.clear()

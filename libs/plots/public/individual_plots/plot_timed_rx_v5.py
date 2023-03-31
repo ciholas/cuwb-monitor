@@ -4,7 +4,7 @@
 # System libraries
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtWidgets, QtCore
 
 # Local libraries
 from cdp import TimedRxV5
@@ -12,17 +12,17 @@ from network_objects import *
 from settings import *
 
 
-class PlotTimedRxV5(QtGui.QMainWindow):
+class PlotTimedRxV5(QtWidgets.QMainWindow):
     type = TimedRxV5.type
 
     def __init__(self, serial):
 
-        QtGui.QMainWindow.__init__(self)
+        QtWidgets.QMainWindow.__init__(self)
 
-        self.central = QtGui.QWidget()  #This will be our central widget
+        self.central = QtWidgets.QWidget()  #This will be our central widget
         self.serial = serial
         self.setWindowTitle('CUWB Monitor - Timed Reception Plotter ID: 0x{:08X}'.format(serial))
-        self.grid_layout = QtGui.QGridLayout()
+        self.grid_layout = QtWidgets.QGridLayout()
         self.running = True
 
         self.id_total = 0
@@ -41,11 +41,12 @@ class PlotTimedRxV5(QtGui.QMainWindow):
         self.previous_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[TimedRxV5.type] - len(UwbNetwork.nodes[self.serial].cdp_pkts[TimedRxV5.type])
 
         self.rf_plot_window = RfPlotSubWindow(self.serial, self)
+        self.rf_plot_window.show()
 
-        self.grid_layout.addWidget(QtGui.QLabel("Serial#"), 0, 0)
-        self.grid_layout.addWidget(QtGui.QLabel("RxQ"), 0, 1)
-        self.grid_layout.addWidget(QtGui.QLabel("#/Freq"),0, 2)
-        self.grid_layout.addWidget(QtGui.QLabel("En"), 0, 3)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Serial#"), 0, 0)
+        self.grid_layout.addWidget(QtWidgets.QLabel("RxQ"), 0, 1)
+        self.grid_layout.addWidget(QtWidgets.QLabel("#/Freq"),0, 2)
+        self.grid_layout.addWidget(QtWidgets.QLabel("En"), 0, 3)
 
         self.update_labels()
 
@@ -77,10 +78,10 @@ class PlotTimedRxV5(QtGui.QMainWindow):
         for idx in range(_current_size):
             _target_id = UwbNetwork.nodes[self.serial].cdp_pkts[TimedRxV5.type][idx - _current_size].source_serial_number.as_int
             if not (_target_id in self.from_ids):
-                self.from_id_id_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_iid_cf_labels.update([(self.id_total, [QtGui.QLabel(), QtGui.QLabel(), QtGui.QLabel(), QtGui.QLabel(), QtGui.QLabel(), QtGui.QLabel()])])
-                self.from_id_iid_rxq_labels.update([(self.id_total, [QtGui.QLabel(), QtGui.QLabel(), QtGui.QLabel(), QtGui.QLabel(), QtGui.QLabel(), QtGui.QLabel()])])
-                self.from_id_iid_checks.update([(self.id_total, [QtGui.QCheckBox(), QtGui.QCheckBox(), QtGui.QCheckBox(), QtGui.QCheckBox(), QtGui.QCheckBox(), QtGui.QCheckBox()])])
+                self.from_id_id_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_iid_cf_labels.update([(self.id_total, [QtWidgets.QLabel(), QtWidgets.QLabel(), QtWidgets.QLabel(), QtWidgets.QLabel(), QtWidgets.QLabel(), QtWidgets.QLabel()])])
+                self.from_id_iid_rxq_labels.update([(self.id_total, [QtWidgets.QLabel(), QtWidgets.QLabel(), QtWidgets.QLabel(), QtWidgets.QLabel(), QtWidgets.QLabel(), QtWidgets.QLabel()])])
+                self.from_id_iid_checks.update([(self.id_total, [QtWidgets.QCheckBox(), QtWidgets.QCheckBox(), QtWidgets.QCheckBox(), QtWidgets.QCheckBox(), QtWidgets.QCheckBox(), QtWidgets.QCheckBox()])])
                 self.id_iid_plotting.update([(_target_id, [False, False, False, False, False, False])])
                 self.from_id_iid_times.update([(_target_id, [deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH)])])
                 self.from_id_frequency_deques.update([(_target_id, deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH))])
@@ -99,10 +100,10 @@ class PlotTimedRxV5(QtGui.QMainWindow):
 
                 if _column > 0:
                     _row = 2
-                    self.grid_layout.addWidget(QtGui.QLabel("Serial#"), _row, _column + 0)
-                    self.grid_layout.addWidget(QtGui.QLabel("RxQ"), _row, _column + 1)
-                    self.grid_layout.addWidget(QtGui.QLabel("#/Freq ID0"), _row, _column + 2)
-                    self.grid_layout.addWidget(QtGui.QLabel("En"), _row, _column + 3)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Serial#"), _row, _column + 0)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("RxQ"), _row, _column + 1)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("#/Freq ID0"), _row, _column + 2)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("En"), _row, _column + 3)
                 self.id_total += 1
 
             _iid = UwbNetwork.nodes[self.serial].cdp_pkts[TimedRxV5.type][idx - _current_size].interface_id
@@ -117,7 +118,7 @@ class PlotTimedRxV5(QtGui.QMainWindow):
             self.from_id_iid_rx_qual[_target_id][_iid] = UwbNetwork.nodes[self.serial].cdp_pkts[TimedRxV5.type][idx - _current_size].rx_nt_quality
 
         for _target_id in self.from_ids:
-            self.from_id_frequency_deques[_target_id].append((self.from_id_iid_count[_target_id][0], time.time()))
+            self.from_id_frequency_deques[_target_id].append((self.from_id_iid_count[_target_id][0], time.monotonic()))
 
         for _row in range(self.id_total):
             _target_id = int(self.from_ids[_row])
@@ -154,30 +155,31 @@ class PlotTimedRxV5(QtGui.QMainWindow):
                                                     np.array([]))
 
     def reset(self):
-        for target_id in self.from_ids:
-            self.from_id_iid_times[target_id] = [deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH)]
-            self.from_id_frequency_deques[target_id] = deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH)
-            self.from_id_iid_tp_data[target_id] = [deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH)]
-            self.from_id_iid_fp_data[target_id] = [deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH)]
-            self.from_id_iid_count[target_id] = [0, 0, 0, 0, 0, 0]
-            self.from_id_iid_rx_qual[target_id] = [0, 0, 0, 0, 0, 0]
-        self.rf_plot_window.color_offset = 0
-        for row in range(self.id_total):
-            target_id = int(self.from_ids[row])
-            for iid in range(6):
-                self.rf_plot_window.update_data('tp', '0x{:08X}:{:d}'.format(target_id, iid),
-                                                np.array([]),
-                                                np.array([]))
-                self.rf_plot_window.update_data('fp', '0x{:08X}:{:d}'.format(target_id, iid),
-                                                np.array([]),
-                                                np.array([]))
+        if self.isVisible():
+            for target_id in self.from_ids:
+                self.from_id_iid_times[target_id] = [deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH)]
+                self.from_id_frequency_deques[target_id] = deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH)
+                self.from_id_iid_tp_data[target_id] = [deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH)]
+                self.from_id_iid_fp_data[target_id] = [deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH), deque([], TRAIL_LENGTH)]
+                self.from_id_iid_count[target_id] = [0, 0, 0, 0, 0, 0]
+                self.from_id_iid_rx_qual[target_id] = [0, 0, 0, 0, 0, 0]
+            self.rf_plot_window.color_offset = 0
+            for row in range(self.id_total):
+                target_id = int(self.from_ids[row])
+                for iid in range(6):
+                    self.rf_plot_window.update_data('tp', '0x{:08X}:{:d}'.format(target_id, iid),
+                                                    np.array([]),
+                                                    np.array([]))
+                    self.rf_plot_window.update_data('fp', '0x{:08X}:{:d}'.format(target_id, iid),
+                                                    np.array([]),
+                                                    np.array([]))
         self.previous_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[TimedRxV5.type]
 
 
-class RfPlotSubWindow(pg.GraphicsWindow):
+class RfPlotSubWindow(pg.GraphicsLayoutWidget):
     def __init__(self, serial, parent):
 
-        pg.GraphicsWindow.__init__(self)
+        pg.GraphicsLayoutWidget.__init__(self)
         self.setWindowTitle('CUWB Monitor - Timed Reception RF Plot ID: 0x{:08X}'.format(serial))
         self.serial = serial
         self.resize(1024, 600)
@@ -196,7 +198,6 @@ class RfPlotSubWindow(pg.GraphicsWindow):
 
         self.legend_graph = self.addPlot(title='Legend', row=2, col=0)
         self.legend = self.legend_graph.addLegend()
-
 
         self.tp_data = dict()
         self.fp_data = dict()
@@ -223,7 +224,8 @@ class RfPlotSubWindow(pg.GraphicsWindow):
 
         if not (serial in self.tp_data):
             try:
-                self.legend_graph.legend.scene().removeItem(self.legend_graph.legend)
+                self.legend.clear()
+                self.legend_graph.removeItem(self.legend)
             except Exception as e: print(e)
 
             self.tp_data.update([(serial, self.tp_graph.plot(name=serial, pen=pg.mkPen(self.colors[self.color_offset % len(self.colors)], width=2)))])
@@ -241,9 +243,11 @@ class RfPlotSubWindow(pg.GraphicsWindow):
             data[_idx] = np.nan
             time = time[1::]
 
-        if   plot_type == 'tp'    : self.tp_data[serial].setData(time, data)
-        elif plot_type == 'fp'    : self.fp_data[serial].setData(time, data)
+        if len(time) > 1:
+            if   plot_type == 'tp'    : self.tp_data[serial].setData(time, data)
+            elif plot_type == 'fp'    : self.fp_data[serial].setData(time, data)
 
     def closeEvent(self, e):
         self.killTimer(self.timer)
         self.running = False
+        self.close()

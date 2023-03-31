@@ -5,16 +5,18 @@
 from functools import partial
 import numpy as np
 import pyqtgraph as pg
+import pyqtgraph.opengl as gl
 from pyqtgraph.Qt import QtWidgets, QtCore
+from OpenGL.GL import *
 
 # Local libraries
-from cdp import GyroscopeV2
+from cdp import QuaternionV2
 from network_objects import *
 from settings import *
 
 
-class PlotGyroV2(QtWidgets.QMainWindow):
-    type = GyroscopeV2.type
+class PlotQuaternionV2(QtWidgets.QMainWindow):
+    type = QuaternionV2.type
 
     def __init__(self, serial):
 
@@ -22,7 +24,7 @@ class PlotGyroV2(QtWidgets.QMainWindow):
 
         self.central = QtWidgets.QWidget()  #This will be our central widget
         self.serial = serial
-        self.setWindowTitle('CUWB Monitor - Gyroscope V2 Devices ID: 0x{:08X}'.format(serial))
+        self.setWindowTitle('CUWB Monitor - Quaternion V2 Devices ID: 0x{:08X}'.format(serial))
         self.grid_layout = QtWidgets.QGridLayout()
         self.running = True
 
@@ -101,13 +103,13 @@ class PlotGyroV2(QtWidgets.QMainWindow):
                     print(UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size])
 
             if _target_id in self.sub_windows.keys():
-                _scale = UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size].scale / 2147483647.0
-                _x = UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size].x * _scale
-                _y = UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size].y * _scale
-                _z = UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size].z * _scale
+                _x = (UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size].x * 1.0) / (2.0**30)
+                _y = (UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size].y * 1.0) / (2.0**30)
+                _w = (UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size].w * 1.0) / (2.0**30)
+                _z = (UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size].z * 1.0) / (2.0**30)
                 _time = UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size].network_time * TICK
 
-                self.sub_windows[_target_id].update_data(_x, _y, _z, _time)
+                self.sub_windows[_target_id].update_data(_x, _y, _z, _w, _time)
 
         for _target_id in self.from_ids:
             self.from_id_frequency_deques[_target_id].append((self.from_id_count[_target_id], time.monotonic()))
@@ -124,8 +126,7 @@ class PlotGyroV2(QtWidgets.QMainWindow):
             self.from_id_freq_labels[_row].setText('{:5.1f}Hz'.format(_freq))
 
     def labelClickEvent(self, serial, e):
-        self.sub_windows.update([(serial, PlotGyroV2SubWindow(serial, self))])
-        self.sub_windows[serial].show();
+        self.sub_windows.update([(serial, PlotQuatV2SubWindow(serial, self))])
 
     def reset(self):
         for target_id in self.from_ids:
@@ -136,73 +137,98 @@ class PlotGyroV2(QtWidgets.QMainWindow):
         self.previous_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[self.type]
 
 
-class PlotGyroV2SubWindow(pg.GraphicsLayoutWidget):
+class PlotQuatV2SubWindow(QtWidgets.QMainWindow):
     def __init__(self, serial, parent):
 
-        pg.GraphicsLayoutWidget.__init__(self)
-        self.setWindowTitle('CUWB Monitor - Gyro V2 Plot ID: 0x{:08X}'.format(serial))
+        QtWidgets.QMainWindow.__init__(self)
+        self.show()
+        self.setWindowTitle('CUWB Monitor - Quat V2 Plot ID: 0x{:08X}'.format(serial))
         self.serial = serial
-        self.resize(1200, 800)
         self.parent = parent
 
-        self.x_data = deque([], TRAIL_LENGTH)
-        self.y_data = deque([], TRAIL_LENGTH)
-        self.z_data = deque([], TRAIL_LENGTH)
-        self.t_data = deque([], TRAIL_LENGTH)
+        self.central = QtWidgets.QWidget()
+        self.grid_layout = QtWidgets.QGridLayout()
+        self.central.setLayout(self.grid_layout)
+        self.setCentralWidget(self.central)
 
-        self.x_azimuth = 0
-        self.y_azimuth = 0
-        self.z_azimuth = 0
-        self.last_azimuth_update = time.monotonic()
+        length = 1000
+        height = 1200
+        self.resize(length, height)
 
-        self.graph = self.addPlot(title='GyroScope XYZ', row=0, col=0, colspan=3)
-        self.graph.setYRange(-15, 15)
+        self.plotter = pg.GraphicsLayoutWidget(show=True)
+        self.grid_layout.addWidget(self.plotter, 0, 0)
+        self.graph = self.plotter.addPlot(title='Quaternion XYZ', row=0, col=0)
+        self.graph.setYRange(-1.0, 1.0)
         self.graph.showGrid(x=True, y=True)
 
         self.legend = self.graph.addLegend()
         self.plot_x = self.graph.plot(name='X', pen=pg.mkPen('r', width=2))
         self.plot_y = self.graph.plot(name='Y', pen=pg.mkPen('g', width=2))
         self.plot_z = self.graph.plot(name='Z', pen=pg.mkPen('b', width=2))
+        self.plot_w = self.graph.plot(name='W', pen=pg.mkPen('w', width=2))
 
-        self.x_direction_graph = self.addPlot(title='XY Rotation', row=1, col=0, colspan=1)
-        self.x_direction_graph.addLine(x=0, pen=0.2)
-        self.x_direction_graph.addLine(y=0, pen=0.2)
-        for r in range(2,20,2):
-            _circle = pg.QtWidgets.QGraphicsEllipseItem(-r,-r,r * 2,r * 2)
-            _circle.setPen(pg.mkPen(0.2))
-            self.x_direction_graph.addItem(_circle)
-        self.x_direction_arrow = pg.ArrowItem(angle=90, tipAngle=30, headLen=40, tailLen=150, tailWidth=5, brush='r', pen={'color':'r', 'width':1})
-        self.x_direction_graph.addItem(self.x_direction_arrow)
-        self.x_direction_arrow.setPos(0,20)
-        self.x_direction_text = pg.TextItem(text="", color='w', anchor=(0,0))
-        self.x_direction_graph.addItem(self.x_direction_text)
+        self.x_data = deque([], TRAIL_LENGTH)
+        self.y_data = deque([], TRAIL_LENGTH)
+        self.z_data = deque([], TRAIL_LENGTH)
+        self.w_data = deque([], TRAIL_LENGTH)
+        self.t_data = deque([], TRAIL_LENGTH)
 
-        self.y_direction_graph = self.addPlot(title='XZ Rotation', row=1, col=1, colspan=1)
-        self.y_direction_graph.addLine(x=0, pen=0.2)
-        self.y_direction_graph.addLine(y=0, pen=0.2)
-        for r in range(2,20,2):
-            _circle = pg.QtWidgets.QGraphicsEllipseItem(-r,-r,r * 2,r * 2)
-            _circle.setPen(pg.mkPen(0.2))
-            self.y_direction_graph.addItem(_circle)
-        self.y_direction_arrow = pg.ArrowItem(angle=90, tipAngle=30, headLen=40, tailLen=150, tailWidth=5, brush='g', pen={'color':'g', 'width':1})
-        self.y_direction_graph.addItem(self.y_direction_arrow)
-        self.y_direction_arrow.setPos(0, 20)
-        self.y_direction_text = pg.TextItem(text="", color='w', anchor=(0,0))
-        self.y_direction_graph.addItem(self.y_direction_text)
+        self.view = gl.GLViewWidget()
+        self.grid_layout.addWidget(self.view, 1, 0)
+        self.axes = cuwbAxisItem()
+        self.view.addItem(self.axes)
+        x, y, z = self.axes.size()
+        xlabel = gl.GLTextItem(pos = np.array([x,0,0]), text = "X")
+        self.view.addItem(xlabel)
+        ylabel = gl.GLTextItem(pos = np.array([0,y,0]), text = "Y")
+        self.view.addItem(ylabel)
+        zlabel = gl.GLTextItem(pos = np.array([0,0,z]), text = "Z")
+        self.view.addItem(zlabel)
 
+        vertices = np.array([[2,1,0.5],
+                             [2,-1,0.5],
+                             [-2,-1,0.5],
+                             [-2,1,0.5],
+                             [2,1,-0.5],
+                             [2,-1,-0.5],
+                             [-2,-1,-0.5],
+                             [-2,1,-0.5]])
+        surfaces = np.array([[4,5,7], #Back
+                             [5,6,7],
+                             [4,0,7], #Top
+                             [0,3,7],
+                             [5,1,6], #Bottom
+                             [1,2,6],
+                             [0,1,4], #Right
+                             [1,5,4],
+                             [3,2,7], #Left
+                             [2,6,7],
+                             [0,1,3], #Front
+                             [1,2,3]])
+        colors = np.array([[1.0,0.2,0.2, 1],
+                           [1.0,0.2,0.2, 1],
+                           [0.2,1.0,0.2, 1],
+                           [0.2,1.0,0.2, 1],
+                           [0.2,0.2,1.0, 1],
+                           [0.2,0.2,1.0, 1],
+                           [0.2,1.0,1.0, 1],
+                           [0.2,1.0,1.0, 1],
+                           [1.0,0.2,1.0, 1],
+                           [1.0,0.2,1.0, 1],
+                           [1.0,1.0,0.2, 1],
+                           [1.0,1.0,0.2, 1]])
+        self.cube = gl.GLMeshItem(vertexes=vertices, faces=surfaces, faceColors=colors, smooth = False)
+        self.view.addItem(self.cube)
 
-        self.z_direction_graph = self.addPlot(title='YZ Rotation', row=1, col=2, colspan=1)
-        self.z_direction_graph.addLine(x=0, pen=0.2)
-        self.z_direction_graph.addLine(y=0, pen=0.2)
-        for r in range(2, 20, 2):
-            _circle = pg.QtWidgets.QGraphicsEllipseItem(-r,-r,r * 2,r * 2)
-            _circle.setPen(pg.mkPen(0.2))
-            self.z_direction_graph.addItem(_circle)
-        self.z_direction_arrow = pg.ArrowItem(angle=90, tipAngle=30, headLen=40, tailLen=150, tailWidth=5, brush='b', pen={'color':'b', 'width':1})
-        self.z_direction_graph.addItem(self.z_direction_arrow)
-        self.z_direction_arrow.setPos(0, 20)
-        self.z_direction_text = pg.TextItem(text="", color='w', anchor=(0,0))
-        self.z_direction_graph.addItem(self.z_direction_text)
+        #Necessary lines for the 3d plotter and 2d plotter to simultaneously be in the window
+        self.plotter.sizeHint =  lambda: QtCore.QSize(100,100)
+        self.view.sizeHint = lambda: QtCore.QSize(100, 100)
+        self.view.setSizePolicy(self.plotter.sizePolicy())
+
+        self.theta = 0
+        self.x_angle = 0
+        self.y_angle = 0
+        self.z_angle = 0
 
         self.timer = self.startTimer(QPLOT_FREQUENCY)
         self.running = True
@@ -218,41 +244,34 @@ class PlotGyroV2SubWindow(pg.GraphicsLayoutWidget):
         self.plot_x.setData(self.t_data, self.x_data)
         self.plot_y.setData(self.t_data, self.y_data)
         self.plot_z.setData(self.t_data, self.z_data)
+        self.plot_w.setData(self.t_data, self.w_data)
 
         _current_time = self.t_data[-1]
 
-        self.x_azimuth -= np.mean(np.array(self.x_data)[-20:]) * (_current_time - self.last_azimuth_update)
-        x_azimuth_display = (360 - self.x_azimuth + 90) % 360
-        self.x_direction_arrow.setRotation((90 - x_azimuth_display) % 360)
-        self.x_direction_arrow.setPos(20.0 * np.cos(np.radians(x_azimuth_display)), 20.0 * np.sin(np.radians(x_azimuth_display)))
-        self.x_direction_graph.setXRange(-20, 20)
-        self.x_direction_graph.setYRange(-20, 20)
-        self.x_direction_text.setText("{:0.2f}".format(self.x_azimuth % 360))
-
-        self.y_azimuth -= np.mean(np.array(self.y_data)[-20:]) * (_current_time - self.last_azimuth_update)
-        y_azimuth_display = (360 - self.y_azimuth + 90) % 360
-        self.y_direction_arrow.setRotation((90 - y_azimuth_display) % 360)
-        self.y_direction_arrow.setPos(20.0 * np.cos(np.radians(y_azimuth_display)), 20.0 * np.sin(np.radians(y_azimuth_display)))
-        self.y_direction_graph.setXRange(-20, 20)
-        self.y_direction_graph.setYRange(-20, 20)
-        self.y_direction_text.setText("{:0.2f}".format(self.y_azimuth % 360))
-
-        self.z_azimuth -= np.mean(np.array(self.z_data)[-20:]) * (_current_time - self.last_azimuth_update)
-        z_azimuth_display = (360 - self.z_azimuth + 90) % 360
-        self.z_direction_arrow.setRotation((90 - z_azimuth_display) % 360)
-        self.z_direction_arrow.setPos(20.0 * np.cos(np.radians(z_azimuth_display)), 20.0 * np.sin(np.radians(z_azimuth_display)))
-        self.z_direction_graph.setXRange(-20, 20)
-        self.z_direction_graph.setYRange(-20, 20)
-        self.z_direction_text.setText("{:0.2f}".format(self.z_azimuth % 360))
-
-        self.last_azimuth_update = _current_time
-
-    def update_data(self, x, y, z, t):
-
+    def update_data(self, x, y, z, w, t):
         self.x_data.append(x)
         self.y_data.append(y)
         self.z_data.append(z)
+        self.w_data.append(w)
         self.t_data.append(t)
+
+        self.cube.rotate(-self.theta, self.x_angle, self.y_angle, self.z_angle)
+        if w==1 or w==-1:
+            self.theta = 0
+            self.x_angle = 0
+            self.y_angle = 0
+            self.z_angle = 0
+        else:
+            new_x = x/(1-w**2)**(1/2)
+            new_y = y/(1-w**2)**(1/2)
+            new_z = z/(1-w**2)**(1/2)
+            #If the shape attempts to rotate on an axis of 0,0,0 the shape will shrink. This check prevents that from happening.
+            if not (new_x == 0.0 and new_y == 0.0 and new_z == 0.0):
+                self.theta = 2*np.degrees(np.arccos(w))
+                self.x_angle = new_x
+                self.y_angle = new_y
+                self.z_angle = new_z
+                self.cube.rotate(self.theta, self.x_angle, self.y_angle, self.z_angle)
 
     def closeEvent(self, e):
         self.killTimer(self.timer)
@@ -262,9 +281,38 @@ class PlotGyroV2SubWindow(pg.GraphicsLayoutWidget):
         self.x_data = deque([], TRAIL_LENGTH)
         self.y_data = deque([], TRAIL_LENGTH)
         self.z_data = deque([], TRAIL_LENGTH)
+        self.w_data = deque([], TRAIL_LENGTH)
         self.t_data = deque([], TRAIL_LENGTH)
 
-        self.x_azimuth = 0
-        self.y_azimuth = 0
-        self.z_azimuth = 0
-        self.last_azimuth_update = time.monotonic()
+        self.cube.rotate(-self.theta, self.x_angle, self.y_angle, self.z_angle)
+        self.theta = 0
+        self.x_angle = 0
+        self.y_angle = 0
+        self.z_angle = 0
+
+class cuwbAxisItem(gl.GLAxisItem):
+    def __init__(self):
+        gl.GLAxisItem.__init__(self)
+        self.setSize(5,5,5)
+
+    def paint(self):
+        self.setupGLState()
+        if self.antialias:
+            glEnable(GL_LINE_SMOOTH)
+            glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+
+        glBegin(GL_LINES)
+        x, y, z = self.size()
+        
+        glColor4f(0,0,1, .6)
+        glVertex3f(0,0,0)
+        glVertex3f(0,0,z)
+
+        glColor4f(0,1,0, .6)
+        glVertex3f(0,0,0)
+        glVertex3f(0,y,0)
+
+        glColor4f(1,0,0, .6)
+        glVertex3f(0,0,0)
+        glVertex3f(x,0,0)
+        glEnd()

@@ -4,12 +4,11 @@
 # System libraries
 import numpy as np
 from functools import partial
-from pyqtgraph import QtCore, QtGui
+from pyqtgraph import QtCore, QtWidgets
 import time
 
 # Local libraries
 from cdp import *
-from displays import *
 from network_objects import *
 from network_discovery_window import NetworkDiscoveryWindow
 from type_filter_window import TypeFilterWindow
@@ -19,13 +18,13 @@ from settings import *
 from socket_processing import *
 
 
-class UiMainWindow(QtGui.QMainWindow):
+class UiMainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, num_processes, ip=None, port=None, ifc=None):
         super().__init__()
 
-        self.central = QtGui.QWidget()  # This will be our central widget
-        self.grid_layout = QtGui.QGridLayout()
+        self.central = QtWidgets.QWidget()  # This will be our central widget
+        self.grid_layout = QtWidgets.QGridLayout()
         self.setWindowTitle("CUWB Monitor - MAIN")
         self.sub_windows = dict()
         self.plot_windows = dict()
@@ -35,34 +34,34 @@ class UiMainWindow(QtGui.QMainWindow):
         self.type_filter_window = TypeFilterWindow()
         self.network_discovery_window.show()
 
-        self.type_filter_button = QtGui.QPushButton('Filter Data Types')
+        self.type_filter_button = QtWidgets.QPushButton('Filter Data Types')
         self.type_filter_button.clicked.connect(self.open_type_filter_window)
         self.grid_layout.addWidget(self.type_filter_button, 2, 1)
 
-        self.aggregate_plot_button = QtGui.QPushButton('Aggregate Plots')
+        self.aggregate_plot_button = QtWidgets.QPushButton('Aggregate Plots')
         self.aggregate_plot_button.clicked.connect(self.open_aggregate_plots_window)
         self.grid_layout.addWidget(self.aggregate_plot_button, 1, 1)
 
-        self.network_discovery_btn = QtGui.QPushButton('Network Discovery')
+        self.network_discovery_btn = QtWidgets.QPushButton('Network Discovery')
         self.network_discovery_btn.clicked.connect(self.open_discovery_window)
         self.grid_layout.addWidget(self.network_discovery_btn, 1, 0)
 
-        self.reset_btn = QtGui.QPushButton('Reset All Windows')
+        self.reset_btn = QtWidgets.QPushButton('Reset All Windows')
         self.reset_btn.clicked.connect(self.reset_all_windows)
         self.grid_layout.addWidget(self.reset_btn, 2, 0)
 
-        self.toggle_pause_play_btn = QtGui.QPushButton('Pause')
+        self.toggle_pause_play_btn = QtWidgets.QPushButton('Pause')
         self.toggle_pause_play_btn.clicked.connect(self.toggle_pause_play)
         self.grid_layout.addWidget(self.toggle_pause_play_btn, 3, 0, 1, 2)
         self.paused = False
 
-        self.serial_title = QtGui.QLabel('SERIAL NUM')
-        self.serial_title.setStyleSheet('color: black')
+        self.serial_title = QtWidgets.QLabel('SERIAL NUM')
+        self.serial_title.setStyleSheet(GetTitleColor())
         self.serial_title.setAlignment(QtCore.Qt.AlignCenter)
         self.serial_title.setMargin(5)
 
-        self.total_count_title = QtGui.QLabel('CDP CNT')
-        self.total_count_title.setStyleSheet('color: black')
+        self.total_count_title = QtWidgets.QLabel('CDP CNT')
+        self.total_count_title.setStyleSheet(GetTitleColor())
         self.total_count_title.setAlignment(QtCore.Qt.AlignCenter)
         self.serial_title.setMargin(5)
 
@@ -108,12 +107,12 @@ class UiMainWindow(QtGui.QMainWindow):
                 self.currently_filtering = False
 
         while len(UwbNetwork.nodes) > self.count:
-            self.serial_labels.update([(self.count, QtGui.QLabel())])
+            self.serial_labels.update([(self.count, QtWidgets.QLabel())])
             self.serial_labels[self.count].setAlignment(QtCore.Qt.AlignCenter)
             self.serial_labels[self.count].mouseReleaseEvent = partial(self.labelClickEvent, self.count)
-            self.serial_labels[self.count].setStyleSheet('color: blue')
+            self.serial_labels[self.count].setStyleSheet(GetClickableColor())
 
-            self.total_count_labels.update([(self.count, QtGui.QLabel())])
+            self.total_count_labels.update([(self.count, QtWidgets.QLabel())])
             self.total_count_labels[self.count].setAlignment(QtCore.Qt.AlignCenter)
 
             _row = self.count % 25
@@ -187,7 +186,7 @@ class UiMainWindow(QtGui.QMainWindow):
             for serial in UwbNetwork.nodes:
                 UwbNetwork.nodes[serial].pause()
 
-class StatsWindow(QtGui.QMainWindow):
+class StatsWindow(QtWidgets.QMainWindow):
 
     def __init__(self, serial, main_window=None):
         super().__init__()
@@ -196,31 +195,30 @@ class StatsWindow(QtGui.QMainWindow):
         self.main_window = main_window
         self.resize_flag = True
 
-        self.central = QtGui.QWidget()  # This will be our central widget
-        self.grid_layout = QtGui.QGridLayout()
+        self.central = QtWidgets.QWidget()  # This will be our central widget
+        self.grid_layout = QtWidgets.QGridLayout()
         self.plot_windows = dict()
-        self.display_windows = dict()
 
         self.serial = serial
         self.setWindowTitle('CUWB Monitor - ID: 0x{:08X}'.format(self.serial))
 
-        self.type_title = QtGui.QLabel('Type')
-        self.type_title.setStyleSheet('color: black')
+        self.type_title = QtWidgets.QLabel('Type')
+        self.type_title.setStyleSheet(GetTitleColor())
         self.type_title.setAlignment(QtCore.Qt.AlignRight)
         self.type_title.setMargin(5)
 
-        self.count_title = QtGui.QLabel('Count')
-        self.count_title.setStyleSheet('color: black')
+        self.count_title = QtWidgets.QLabel('Count')
+        self.count_title.setStyleSheet(GetTitleColor())
         self.count_title.setAlignment(QtCore.Qt.AlignCenter)
         self.count_title.setMargin(5)
 
-        self.freq_title = QtGui.QLabel('Frequency')
-        self.freq_title.setStyleSheet('color: black')
+        self.freq_title = QtWidgets.QLabel('Frequency')
+        self.freq_title.setStyleSheet(GetTitleColor())
         self.freq_title.setAlignment(QtCore.Qt.AlignCenter)
         self.freq_title.setMargin(5)
 
-        self.print_title = QtGui.QLabel('Print')
-        self.print_title.setStyleSheet('color: black')
+        self.print_title = QtWidgets.QLabel('Print')
+        self.print_title.setStyleSheet(GetTitleColor())
         self.print_title.setAlignment(QtCore.Qt.AlignLeft)
         self.print_title.setMargin(5)
 
@@ -238,10 +236,10 @@ class StatsWindow(QtGui.QMainWindow):
             _cdp_types = np.sort(list(UwbNetwork.nodes[self.serial].cdp_pkts.keys()))
             for _type in _cdp_types:
 
-                self.type_labels.update([(self.type_count, QtGui.QLabel(UwbNetwork.nodes[self.serial].cdp_pkts_name[_type]))])
-                self.count_labels.update([(self.type_count, QtGui.QLabel('{:5d}'.format(UwbNetwork.nodes[self.serial].cdp_pkts_count[_type])))])
-                self.disp_freqs.update([(self.type_count, QtGui.QLabel('{:0.3f} Hz'.format(UwbNetwork.nodes[self.serial].cdp_pkts_freq [_type])))])
-                self.disp_checks.update([(self.type_count, QtGui.QCheckBox())])
+                self.type_labels.update([(self.type_count, QtWidgets.QLabel(UwbNetwork.nodes[self.serial].cdp_pkts_name[_type]))])
+                self.count_labels.update([(self.type_count, QtWidgets.QLabel('{:5d}'.format(UwbNetwork.nodes[self.serial].cdp_pkts_count[_type])))])
+                self.disp_freqs.update([(self.type_count, QtWidgets.QLabel('{:0.3f} Hz'.format(UwbNetwork.nodes[self.serial].cdp_pkts_freq [_type])))])
+                self.disp_checks.update([(self.type_count, QtWidgets.QCheckBox())])
 
                 self.type_labels[self.type_count].setAlignment(QtCore.Qt.AlignRight)
                 self.count_labels[self.type_count].setAlignment(QtCore.Qt.AlignCenter)
@@ -253,15 +251,11 @@ class StatsWindow(QtGui.QMainWindow):
                 self.grid_layout.addWidget(self.disp_checks[self.type_count], self.type_count+1, 3)
 
                 if _type in map_type_to_plot.keys() or _type == AppSettingsChunk.type:
-                    self.type_labels[self.type_count].setStyleSheet('color: blue')
-                    self.type_labels[self.type_count].mouseReleaseEvent = partial(self.labelClickEvent, _type)
-
-                if _type in map_type_to_display_window.keys():
-                    self.type_labels[self.type_count].setStyleSheet('color: blue')
+                    self.type_labels[self.type_count].setStyleSheet(GetClickableColor())
                     self.type_labels[self.type_count].mouseReleaseEvent = partial(self.labelClickEvent, _type)
 
                 self.count_labels[self.type_count].mouseReleaseEvent = partial(self.countClickEvent, self.type_count)
-                self.count_labels[self.type_count].setStyleSheet('color: blue')
+                self.count_labels[self.type_count].setStyleSheet(GetClickableColor())
 
                 self.type_count += 1
 
@@ -280,9 +274,6 @@ class StatsWindow(QtGui.QMainWindow):
         for _type in self.plot_windows.keys():
             if self.plot_windows[_type].isVisible():
                 self.plot_windows[_type].close()
-        for _type in self.display_windows.keys():
-            if self.display_windows[_type].isVisible():
-                self.display_windows[_type].close()
         self.killTimer(self.timer)
 
     def timerEvent(self, e):
@@ -310,10 +301,10 @@ class StatsWindow(QtGui.QMainWindow):
 
 
             while len(UwbNetwork.nodes[self.serial].cdp_pkts) > self.type_count:
-                self.type_labels.update([(self.type_count, QtGui.QLabel())])
-                self.count_labels.update([(self.type_count, QtGui.QLabel())])
-                self.disp_freqs.update([(self.type_count, QtGui.QLabel())])
-                self.disp_checks.update([(self.type_count, QtGui.QCheckBox())])
+                self.type_labels.update([(self.type_count, QtWidgets.QLabel())])
+                self.count_labels.update([(self.type_count, QtWidgets.QLabel())])
+                self.disp_freqs.update([(self.type_count, QtWidgets.QLabel())])
+                self.disp_checks.update([(self.type_count, QtWidgets.QCheckBox())])
 
                 self.type_labels[self.type_count].setAlignment(QtCore.Qt.AlignRight)
                 self.count_labels[self.type_count].setAlignment(QtCore.Qt.AlignCenter)
@@ -324,12 +315,12 @@ class StatsWindow(QtGui.QMainWindow):
                 self.grid_layout.addWidget(self.disp_checks[self.type_count], self.type_count + 1, 3)
 
                 self.count_labels[self.type_count].mouseReleaseEvent = partial(self.countClickEvent, self.type_count)
-                self.count_labels[self.type_count].setStyleSheet('color: blue')
+                self.count_labels[self.type_count].setStyleSheet(GetClickableColor())
 
                 self.type_count += 1
 
             for type in UwbNetwork.nodes[self.serial].cdp_pkts.keys():
-                UwbNetwork.nodes[self.serial].cdp_pkts_frequency_deques[type].append((UwbNetwork.nodes[self.serial].cdp_pkts_count[type], time.time()))
+                UwbNetwork.nodes[self.serial].cdp_pkts_frequency_deques[type].append((UwbNetwork.nodes[self.serial].cdp_pkts_count[type], time.monotonic()))
                 UwbNetwork.nodes[self.serial].cdp_pkts_freq[type] = UwbNetwork.nodes[self.serial].calculate_frequency(UwbNetwork.nodes[self.serial].cdp_pkts_frequency_deques[type])
 
             _cdp_types = np.sort(list(UwbNetwork.nodes[self.serial].cdp_pkts.keys()))
@@ -337,9 +328,8 @@ class StatsWindow(QtGui.QMainWindow):
 
                 if self.type_labels[_row].text() != UwbNetwork.nodes[self.serial].cdp_pkts_name[_cdp_types[_row]]:
                     self.type_labels[_row].setText(UwbNetwork.nodes[self.serial].cdp_pkts_name[_cdp_types[_row]])
-                    if _cdp_types[_row] in map_type_to_plot or _cdp_types[_row] == AppSettingsChunk.type \
-                       or _cdp_types[_row] in map_type_to_display_window:
-                        self.type_labels[_row].setStyleSheet('color: blue')
+                    if _cdp_types[_row] in map_type_to_plot or _cdp_types[_row] == AppSettingsChunk.type :
+                        self.type_labels[_row].setStyleSheet(GetClickableColor())
                         self.type_labels[_row].mouseReleaseEvent = partial(self.labelClickEvent, _cdp_types[_row])
                     else:
                         self.type_labels[_row].setStyleSheet('color: grey')
@@ -369,22 +359,10 @@ class StatsWindow(QtGui.QMainWindow):
             reset_method = getattr(self.plot_windows[type], 'reset', None)
             if callable(reset_method):
                 self.plot_windows[type].reset()
-        for type in self.display_windows.keys():
-            reset_method = getattr(self.display_windows[type], 'reset', None)
-            if callable(reset_method):
-                self.display_windows[type].reset()
 
     def labelClickEvent(self, data_type, e):
         if (data_type == AppSettingsChunk.type):
             self.writeSettingsToFile(self.serial)
-        elif (data_type in map_type_to_display_window):
-            _tmp_window = partial(map_type_to_display_window[data_type], self.serial)
-            if data_type in self.display_windows.keys():
-                if self.display_windows[data_type].isVisible():
-                    self.display_windows[data_type].close()
-                del self.display_windows[data_type]
-            self.display_windows.update([(data_type, _tmp_window())])
-            self.display_windows[data_type].show()
         else:
             _tmp_plot = partial(map_type_to_plot[data_type], self.serial)
             if data_type in self.plot_windows.keys():

@@ -4,7 +4,7 @@
 # System libraries
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtWidgets, QtCore
 
 # Local libraries
 from cdp import TemperatureV2
@@ -12,20 +12,21 @@ from network_objects import *
 from settings import *
 
 
-class PlotTemperatureV2(QtGui.QMainWindow):
+class PlotTemperatureV2(QtWidgets.QMainWindow):
     type = TemperatureV2.type
 
     def __init__(self, serial):
 
-        QtGui.QMainWindow.__init__(self)
+        QtWidgets.QMainWindow.__init__(self)
 
-        self.central = QtGui.QWidget()  #This will be our central widget
+        self.central = QtWidgets.QWidget()  #This will be our central widget
         self.serial = serial
         self.setWindowTitle('CUWB Monitor - Temperature V2 Devices ID: 0x{:08X}'.format(serial))
-        self.grid_layout = QtGui.QGridLayout()
+        self.grid_layout = QtWidgets.QGridLayout()
         self.running = True
 
         self.sub_window = PlotTemperatureV2SubWindow(self.serial, self)
+        self.sub_window.show()
 
         self.id_total = 0
         self.from_id_id_labels = dict()
@@ -39,10 +40,10 @@ class PlotTemperatureV2(QtGui.QMainWindow):
         self.from_ids = np.array([])
         self.previous_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[self.type] - len(UwbNetwork.nodes[self.serial].cdp_pkts[self.type])
 
-        self.grid_layout.addWidget(QtGui.QLabel("Serial#"), 0, 0)
-        self.grid_layout.addWidget(QtGui.QLabel("Packet Count"), 0, 1)
-        self.grid_layout.addWidget(QtGui.QLabel("Frequency"), 0, 2)
-        self.grid_layout.addWidget(QtGui.QLabel("Enable"), 0, 3)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Serial#"), 0, 0)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Packet Count"), 0, 1)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Frequency"), 0, 2)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Enable"), 0, 3)
 
         self.update_labels()
 
@@ -69,10 +70,10 @@ class PlotTemperatureV2(QtGui.QMainWindow):
         for idx in range(_current_size):
             _target_id = UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size].serial_number.as_int
             if not (_target_id in self.from_ids):
-                self.from_id_id_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_count_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_freq_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_enable_checks.update([(self.id_total, QtGui.QCheckBox())])
+                self.from_id_id_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_count_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_freq_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_enable_checks.update([(self.id_total, QtWidgets.QCheckBox())])
                 self.from_id_times.update([(_target_id, deque([], TRAIL_LENGTH))])
                 self.from_id_frequency_deques.update([(_target_id, deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH))])
                 self.from_id_count.update([(_target_id, 0)])
@@ -88,10 +89,10 @@ class PlotTemperatureV2(QtGui.QMainWindow):
 
                 if _column > 0:
                     _row = 2
-                    self.grid_layout.addWidget(QtGui.QLabel("Serial#"), _row, _column + 0)
-                    self.grid_layout.addWidget(QtGui.QLabel("Packet Count"), _row, _column + 1)
-                    self.grid_layout.addWidget(QtGui.QLabel("Frequency"), _row, _column + 2)
-                    self.grid_layout.addWidget(QtGui.QLabel("Enable"), _row, _column + 3)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Serial#"), _row, _column + 0)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Packet Count"), _row, _column + 1)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Frequency"), _row, _column + 2)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Enable"), _row, _column + 3)
                 self.id_total += 1
 
             self.from_id_times[_target_id].append(UwbNetwork.nodes[self.serial].cdp_pkts_time[self.type][idx - _current_size])
@@ -101,7 +102,7 @@ class PlotTemperatureV2(QtGui.QMainWindow):
             self.from_id_temp_data[_target_id].append(UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - _current_size].temperature * _scale)
 
         for _target_id in self.from_ids:
-            self.from_id_frequency_deques[_target_id].append((self.from_id_count[_target_id], time.time()))
+            self.from_id_frequency_deques[_target_id].append((self.from_id_count[_target_id], time.monotonic()))
 
         for _row in range(self.id_total):
             _target_id = int(self.from_ids[_row])
@@ -124,24 +125,25 @@ class PlotTemperatureV2(QtGui.QMainWindow):
                                             np.array([]))
 
     def reset(self):
-        for target_id in self.from_ids:
-            self.from_id_count[target_id] = 0
-            self.from_id_frequency_deques[target_id] = deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH)
-            self.from_id_temp_data[target_id] = deque([], TRAIL_LENGTH)
-            self.from_id_times[target_id] = deque([], TRAIL_LENGTH)
-        self.sub_window.color_offset = 0
-        for row in range(self.id_total):
-            target_id = int(self.from_ids[row])
-            self.sub_window.update_data('temperature', '0x{:08X}'.format(target_id),
-                                        np.array([]),
-                                        np.array([]))
-        self.previous_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[self.type]
+        if self.sub_window.isVisible():
+            for target_id in self.from_ids:
+                self.from_id_count[target_id] = 0
+                self.from_id_frequency_deques[target_id] = deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH)
+                self.from_id_temp_data[target_id] = deque([], TRAIL_LENGTH)
+                self.from_id_times[target_id] = deque([], TRAIL_LENGTH)
+            self.sub_window.color_offset = 0
+            for row in range(self.id_total):
+                target_id = int(self.from_ids[row])
+                self.sub_window.update_data('temperature', '0x{:08X}'.format(target_id),
+                                            np.array([]),
+                                            np.array([]))
+            self.previous_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[self.type]
 
 
-class PlotTemperatureV2SubWindow(pg.GraphicsWindow):
+class PlotTemperatureV2SubWindow(pg.GraphicsLayoutWidget):
     def __init__(self, serial, parent):
 
-        pg.GraphicsWindow.__init__(self)
+        pg.GraphicsLayoutWidget.__init__(self)
         self.setWindowTitle('CUWB Monitor - Temperature V2 Plot ID: 0x{:08X}'.format(serial))
         self.serial = serial
         self.resize(1200, 1200)
@@ -179,7 +181,7 @@ class PlotTemperatureV2SubWindow(pg.GraphicsWindow):
 
         if not (serial in self.temp_data):
             try:
-                self.legend_graph.legend.scene().removeItem(self.legend_graph.legend)
+                self.legend_graph.removeItem(self.legend)
             except Exception as e: print(e)
 
             self.temp_data.update([(serial, self.temp_graph.plot(name=serial, pen=pg.mkPen(self.colors[self.color_offset % len(self.colors)], width=2)))])
@@ -187,10 +189,11 @@ class PlotTemperatureV2SubWindow(pg.GraphicsWindow):
             self.color_offset += 1
 
             self.legend = self.legend_graph.addLegend()
+            self.legend.clear()
             for _curve_serials in self.temp_data.keys():
                 self.legend.addItem(self.legend_data[_curve_serials], _curve_serials)
 
-        if   plot_type == 'temperature': self.temp_data[serial].setData(time, data)
+        if   plot_type == 'temperature' and len(time) > 1: self.temp_data[serial].setData(time, data)
 
     def closeEvent(self, e):
         self.killTimer(self.timer)

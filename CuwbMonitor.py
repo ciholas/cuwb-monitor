@@ -18,7 +18,7 @@ from socket_processing import *
 from plots import *
 from ui_main_window import *
 
-VERSION = '1.0.0'
+VERSION = '1.0.X'
 UDP_IP = None
 UDP_PORT = None
 IFACE_IP = None
@@ -40,6 +40,9 @@ parser.add_argument("-p", "--processes", action="store", type=int, dest='num_pro
                     default=1, help="Set the number of processes to use for CDP decoding.")
 parser.add_argument("-d", "--device-id", action="store", type=int,
                     dest='device_id', help="Only listen for packets from [Device ID]")
+parser.add_argument('-4k',               action="store_true",        help="Fix display issues with plotting on 4K monitors.")
+parser.add_argument('--dark',               action="store_true",        help="Contrasting Text for Dark Mode")
+
 
 option_dict = vars(parser.parse_args())
 
@@ -58,6 +61,14 @@ if option_dict['num_processes'] > 1:
 
 if option_dict['device_id'] is not None:
     print('Monitoring device {:08X}'.format(option_dict['device_id']))
+
+if option_dict['4k'] :
+    pg.QtWidgets.QApplication.setAttribute(pg.QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+
+if option_dict['dark'] :
+    SetClickableColor("color : cyan")
+    SetTitleColor("color : white")
+
 
 ############################
 ## MAIN CODE STARTS HERE  ##

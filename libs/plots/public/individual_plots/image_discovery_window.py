@@ -4,7 +4,7 @@
 # System libraries
 import binascii
 import numpy as np
-from pyqtgraph import QtCore, QtGui
+from pyqtgraph import QtCore, QtWidgets
 import time
 
 # Local libraries
@@ -12,20 +12,20 @@ from cdp import ImageDiscoveryV1
 from network_objects import *
 from settings import *
 
-class ImageDiscoveryWindow(QtGui.QMainWindow):
+class ImageDiscoveryWindow(QtWidgets.QMainWindow):
     type = ImageDiscoveryV1.type
 
     def __init__(self, serial):
-        QtGui.QMainWindow.__init__(self)
+        QtWidgets.QMainWindow.__init__(self)
 
-        self.central = QtGui.QWidget()  #This will be our central widget
+        self.central = QtWidgets.QWidget()  #This will be our central widget
         self.serial = serial
         self.setWindowTitle('CUWB Monitor - Image Discovery ID: 0x{:08X}'.format(serial))
-        self.grid_layout = QtGui.QGridLayout()
+        self.grid_layout = QtWidgets.QGridLayout()
 
-        self.manufacturer_label = QtGui.QLabel("Manufacturer:N/A")
-        self.product_label = QtGui.QLabel("Product:N/A")
-        self.running_label = QtGui.QLabel("Running:N/A")
+        self.manufacturer_label = QtWidgets.QLabel("Manufacturer:N/A")
+        self.product_label = QtWidgets.QLabel("Product:N/A")
+        self.running_label = QtWidgets.QLabel("Running:N/A")
 
         self.grid_layout.addWidget(self.manufacturer_label, 0, 0)
         self.grid_layout.addWidget(self.product_label, 0, 1)
@@ -37,13 +37,13 @@ class ImageDiscoveryWindow(QtGui.QMainWindow):
 
         # Create 3 of each type, version, and sha info labels
         for idx in range(3):
-            self.type_label_list.append(QtGui.QLabel("Image:N/A"))
+            self.type_label_list.append(QtWidgets.QLabel("Image:N/A"))
             self.grid_layout.addWidget(self.type_label_list[idx], idx+1, 0)
             self.grid_layout.itemAtPosition(idx+1, 0).widget().hide()
-            self.sha1_label_list.append(QtGui.QLabel("SHA:N/A"))
+            self.sha1_label_list.append(QtWidgets.QLabel("SHA:N/A"))
             self.grid_layout.addWidget(self.sha1_label_list[idx], idx+1, 1)
             self.grid_layout.itemAtPosition(idx+1, 1).widget().hide()
-            self.version_label_list.append(QtGui.QLabel("Version:N/A"))
+            self.version_label_list.append(QtWidgets.QLabel("Version:N/A"))
             self.grid_layout.addWidget(self.version_label_list[idx], idx+1, 2)
             self.grid_layout.itemAtPosition(idx+1, 2).widget().hide()
 
@@ -63,7 +63,7 @@ class ImageDiscoveryWindow(QtGui.QMainWindow):
             self.close()
             return
 
-        if self.running:
+        if self.running and UwbNetwork.nodes[self.serial].cdp_pkts_count[ImageDiscoveryV1.type] > 0:
             discovery_pkt = UwbNetwork.nodes[self.serial].cdp_pkts[ImageDiscoveryV1.type][-1]
 
             # Use cp1525 instead of utf-8 because it utf-8 was causing some issues with unusual characters
@@ -122,3 +122,12 @@ class ImageDiscoveryWindow(QtGui.QMainWindow):
     def closeEvent(self, e):
         self.running = False
         self.close()
+
+    def reset(self):
+        self.manufacturer_label.setText("Manufacturer:N/A")
+        self.product_label.setText("Product:N/A")
+        self.running_label.setText("Running:N/A")
+        for idx in range(3):
+            self.type_label_list[idx].setText("Image:N/A")
+            self.sha1_label_list[idx].setText("SHA:N/A")
+            self.version_label_list[idx].setText("Version:N/A")

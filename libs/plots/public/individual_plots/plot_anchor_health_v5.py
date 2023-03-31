@@ -5,7 +5,7 @@
 from functools import partial
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtWidgets, QtCore
 
 # Local libraries
 from cdp import AnchorHealthV5, FullDeviceID
@@ -13,18 +13,19 @@ from network_objects import *
 from settings import *
 
 
-class PlotAnchorHealthV5(QtGui.QMainWindow):
+class PlotAnchorHealthV5(QtWidgets.QMainWindow):
     type = AnchorHealthV5.type
 
     def __init__(self, serial):
 
-        QtGui.QMainWindow.__init__(self)
+        QtWidgets.QMainWindow.__init__(self)
 
-        self.central = QtGui.QScrollArea()
-        self.central_inner_widget = QtGui.QWidget()
+        self.central = QtWidgets.QScrollArea()
+        self.central.setWidgetResizable(True)
+        self.central_inner_widget = QtWidgets.QWidget()
         self.serial = serial
         self.setWindowTitle('CUWB Monitor - Anchor Health V5 Plotter ID: 0x{:08X}'.format(serial))
-        self.grid_layout = QtGui.QGridLayout()
+        self.grid_layout = QtWidgets.QGridLayout()
         self.running = True
 
         self.sub_windows = dict([])
@@ -39,18 +40,20 @@ class PlotAnchorHealthV5(QtGui.QMainWindow):
         self.from_ids = np.array([])
         self.previous_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[AnchorHealthV5.type] - len(UwbNetwork.nodes[self.serial].cdp_pkts[AnchorHealthV5.type])
 
-        self.grid_layout.addWidget(QtGui.QLabel('Serial #'), 0, 0)
-        self.grid_layout.addWidget(QtGui.QLabel('Packet Count'), 0, 1)
-        self.grid_layout.addWidget(QtGui.QLabel('Frequency'), 0, 2)
-        self.grid_layout.addWidget(QtGui.QLabel('Print'), 0, 3)
+        self.grid_layout.addWidget(QtWidgets.QLabel('Serial #'), 0, 0)
+        self.grid_layout.addWidget(QtWidgets.QLabel('Packet Count'), 0, 1)
+        self.grid_layout.addWidget(QtWidgets.QLabel('Frequency'), 0, 2)
+        self.grid_layout.addWidget(QtWidgets.QLabel('Print'), 0, 3)
 
         self.update_labels()
+        #This allows for a dynamic window size where the number of serials already in the window after
+        #one pass affects the size of the serial choice window.
+        row_height = 20
+        self.resize(400, row_height+(row_height * len(self.from_id_id_labels)))
 
         self.central_inner_widget.setLayout(self.grid_layout)
         self.central.setWidget(self.central_inner_widget)
-
         self.setCentralWidget(self.central)
-        self.resize(400, 400)
 
         self.timer = self.startTimer(QPLOT_FREQUENCY)
 
@@ -74,10 +77,10 @@ class PlotAnchorHealthV5(QtGui.QMainWindow):
         for idx in range(current_size):
             target_id = UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - current_size].serial_number.as_int
             if not (target_id in self.from_ids):
-                self.from_id_id_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_count_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_freq_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_enable_checks.update([(self.id_total, QtGui.QCheckBox())])
+                self.from_id_id_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_count_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_freq_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_enable_checks.update([(self.id_total, QtWidgets.QCheckBox())])
                 self.from_id_frequency_deques.update([(target_id, deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH))])
                 self.from_id_count.update([(target_id, 0)])
                 self.from_ids = np.sort(np.append(self.from_ids, target_id))
@@ -91,10 +94,10 @@ class PlotAnchorHealthV5(QtGui.QMainWindow):
 
                 if column > 0:
                     row = 2
-                    self.grid_layout.addWidget(QtGui.QLabel("Serial #"), row, column + 0)
-                    self.grid_layout.addWidget(QtGui.QLabel("Packet Count"), row, column + 1)
-                    self.grid_layout.addWidget(QtGui.QLabel("Frequency"), row, column + 2)
-                    self.grid_layout.addWidget(QtGui.QLabel("Print"), row, column + 3)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Serial #"), row, column + 0)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Packet Count"), row, column + 1)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Frequency"), row, column + 2)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Print"), row, column + 3)
                 self.id_total += 1
 
             self.from_id_count[target_id] += 1
@@ -110,13 +113,13 @@ class PlotAnchorHealthV5(QtGui.QMainWindow):
                 self.sub_windows[target_id].updateData(packet)
 
         for _target_id in self.from_ids:
-            self.from_id_frequency_deques[_target_id].append((self.from_id_count[_target_id], time.time()))
+            self.from_id_frequency_deques[_target_id].append((self.from_id_count[_target_id], time.monotonic()))
 
         for row in range(self.id_total):
             target_id = int(self.from_ids[row])
             if self.from_id_id_labels[row].text() != '0x{:08X}'.format(target_id):
                 self.from_id_id_labels[row].setText('0x{:08X}'.format(target_id))
-                self.from_id_id_labels[row].setStyleSheet('color:blue')
+                self.from_id_id_labels[row].setStyleSheet(GetClickableColor())
                 self.from_id_id_labels[row].mouseReleaseEvent = partial(self.labelClickEvent, target_id)
 
             freq = UwbNetwork.nodes[self.serial].calculate_frequency(self.from_id_frequency_deques[_target_id])
@@ -131,22 +134,24 @@ class PlotAnchorHealthV5(QtGui.QMainWindow):
             self.from_id_count[target_id] = 0
             self.from_id_frequency_deques[target_id] = deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH)
         for target_id in self.sub_windows:
-            self.sub_windows[target_id].reset()
+            if self.sub_windows[target_id].running:
+                self.sub_windows[target_id].reset()
 
-class PlotAnchorHealthV5SubWindow(pg.GraphicsWindow):
+class PlotAnchorHealthV5SubWindow(pg.GraphicsLayoutWidget):
 
     def __init__(self, serial, parent):
 
         self.data_t = deque([], TRAIL_LENGTH)
         self.data_q = deque([], TRAIL_LENGTH)
 
-        pg.GraphicsWindow.__init__(self)
+        pg.GraphicsLayoutWidget.__init__(self)
         self.show()
         self.setWindowTitle('CUWB Monitor - Anchor Health V5 ID: 0x{:08X}'.format(serial))
         self.serial = serial
         self.resize(900, 350)
         self.packets_received = 0
         self.parent = parent
+        self.running = True
 
         self.timer = self.startTimer(QPLOT_FREQUENCY)
         self.graph_quality = self.addPlot(title='Average Quality', row=0, col=0, colspan=2)
@@ -162,7 +167,8 @@ class PlotAnchorHealthV5SubWindow(pg.GraphicsWindow):
         quality = packet.average_quality
         self.data_t.append(self.packets_received)
         self.data_q.append(quality)
-        self.plot_quality.setData(self.data_t, self.data_q)
+        if len(self.data_t) > 1:
+            self.plot_quality.setData(self.data_t, self.data_q)
         self.packets_received += 1
 
         if packet.bad_paired_anchors:

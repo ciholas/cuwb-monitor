@@ -21,7 +21,7 @@ class UwbNetwork:
     node_count = 1           # This changes with total number of seeds, should never fall below 1.
     system_repeat_rate = 30  # This is default, it should get updated with config file.
     prf = 64                 # This is default, it should get updated with config file.
-    time_initial = time.time()
+    time_initial = time.monotonic()
 
     def stop_network(self):
         self.running = False
@@ -45,7 +45,7 @@ class Node:
         self.cdp_pkts_selected = dict()
         self.cdp_pkts_frequency_deques = dict()
 
-        self.time_initial = time.time()
+        self.time_initial = time.monotonic()
 
         self.cdp_total = 0
 
@@ -104,7 +104,7 @@ class Node:
             self.cdp_pkts_count[type] = 0
             self.cdp_pkts_freq[type] = np.nan
             self.cdp_pkts_frequency_deques[type] = deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH)
-            UwbNetwork.time_initial = time.time()
+            UwbNetwork.time_initial = time.monotonic()
     def pause(self):
         self.paused = True
 

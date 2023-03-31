@@ -5,7 +5,7 @@
 import numpy as np
 import pyqtgraph as pg
 from collections import deque
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtWidgets, QtCore
 
 # Local libraries
 from cdp import *
@@ -29,7 +29,7 @@ class PlotSpecificDistances(pg.LayoutWidget):
         self.serial_b = pg.ComboBox(self)
         self.addWidget(self.serial_b, row=0, col=1)
 
-        self.add_button = QtGui.QPushButton('Add')
+        self.add_button = QtWidgets.QPushButton('Add')
         self.add_button.clicked.connect(self.add_plot)
         self.addWidget(self.add_button, row=0, col=2)
 
@@ -81,6 +81,9 @@ class PlotSpecificDistances(pg.LayoutWidget):
             previous_count = self.network_serials[serial]
             self.network_serials[serial] = UwbNetwork.nodes[serial].cdp_pkts_count[DistanceV2.type]
             current_size = self.network_serials[serial] - previous_count
+            if current_size > TRAIL_LENGTH:
+                current_size = TRAIL_LENGTH
+
             for idx in range(current_size):
                 packet = UwbNetwork.nodes[serial].cdp_pkts[DistanceV2.type][idx - current_size]
                 target_id_a = '0x{:08X}'.format(packet.serial_number_1.as_int)
@@ -101,7 +104,8 @@ class PlotSpecificDistances(pg.LayoutWidget):
                 if pair:
                     self.distance_data[pair].append(packet.distance)
                     self.timestamp_data[pair].append(UwbNetwork.nodes[serial].cdp_pkts_time[DistanceV2.type][idx - current_size])
-                    self.distance_plots[pair].setData(self.timestamp_data[pair], self.distance_data[pair])
+                    if len(self.timestamp_data[pair]) > 1:
+                        self.distance_plots[pair].setData(self.timestamp_data[pair], self.distance_data[pair])
 
     def reset(self):
         for pair in self.distance_plots:
@@ -111,3 +115,4 @@ class PlotSpecificDistances(pg.LayoutWidget):
 
     def closeEvent(self, e):
         self.killTimer(self.timer)
+        self.close()

@@ -4,7 +4,7 @@
 # System libraries
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtCore
 
 # Local libraries
 from cdp import GlobalPingTimingReportV1
@@ -12,7 +12,7 @@ from network_objects import *
 from settings import *
 
 
-class PlotGlobalPingTimingReportV1(pg.GraphicsWindow):
+class PlotGlobalPingTimingReportV1(pg.GraphicsLayoutWidget):
     type = GlobalPingTimingReportV1.type
 
     def UpdatePlot(self):
@@ -24,7 +24,7 @@ class PlotGlobalPingTimingReportV1(pg.GraphicsWindow):
 
     def __init__(self, serial):
 
-        pg.GraphicsWindow.__init__(self)
+        pg.GraphicsLayoutWidget.__init__(self)
 
         self.setWindowTitle('CUWB Monitor - Global Ping Timing Report Plot ID: 0x{:08X}'.format(serial))
         self.resize(900, 500)
@@ -39,7 +39,6 @@ class PlotGlobalPingTimingReportV1(pg.GraphicsWindow):
         self.timer = self.startTimer(QPLOT_FREQUENCY)
 
         self.indexes = np.arange(GlobalPingTimingReportV1.num_time_count_indexes)
-        self.data = deque([], GlobalPingTimingReportV1.num_time_count_indexes)
 
         self.last_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[self.type]
         _current_size = len(UwbNetwork.nodes[self.serial].cdp_pkts[self.type])

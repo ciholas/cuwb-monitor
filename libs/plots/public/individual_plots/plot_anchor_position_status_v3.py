@@ -4,7 +4,7 @@
 # System libraries
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtCore
 
 # Local libraries
 from cdp import AnchorPositionStatusV3
@@ -12,12 +12,12 @@ from network_objects import *
 from settings import *
 
 
-class PlotAnchorPositionStatusV3(pg.GraphicsWindow):
+class PlotAnchorPositionStatusV3(pg.GraphicsLayoutWidget):
     type = AnchorPositionStatusV3.type
 
     def __init__(self, serial):
 
-        pg.GraphicsWindow.__init__(self)
+        pg.GraphicsLayoutWidget.__init__(self)
 
         self.setWindowTitle('CUWB Monitor - Position Stats Plot ID: 0x{:08X}'.format(serial))
         self.resize(900, 500)
@@ -65,13 +65,14 @@ class PlotAnchorPositionStatusV3(pg.GraphicsWindow):
             self.num_fill_anchors.append(_num_fill_anchors)
             self.time.append(UwbNetwork.nodes[self.serial].cdp_pkts_time[self.type][idx - _current_size])
 
-        _num_good_data = np.array(self.num_good_anchors)
-        _num_fill_data = np.array(self.num_fill_anchors)
-        _num_bad_data = np.array(self.num_bad_anchors)
-        _times = np.array(self.time)
-        self.num_good_plot.setData(_times, _num_good_data)
-        self.num_fill_plot.setData(_times, _num_fill_data)
-        self.num_bad_plot.setData(_times, _num_bad_data)
+        if len(self.time) > 1:
+            _num_good_data = np.array(self.num_good_anchors)
+            _num_fill_data = np.array(self.num_fill_anchors)
+            _num_bad_data = np.array(self.num_bad_anchors)
+            _times = np.array(self.time)
+            self.num_good_plot.setData(_times, _num_good_data)
+            self.num_fill_plot.setData(_times, _num_fill_data)
+            self.num_bad_plot.setData(_times, _num_bad_data)
 
 
     def closeEvent(self, e):

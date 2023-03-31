@@ -4,7 +4,7 @@
 # System libraries
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtWidgets, QtCore
 
 # Local libraries
 from cdp import DistanceV2
@@ -31,7 +31,7 @@ class PlotDistanceV2(pg.LayoutWidget):
         self.serial_b = pg.ComboBox(self)
         self.addWidget(self.serial_b, row=0, col=1)
 
-        self.add_button = QtGui.QPushButton('Add')
+        self.add_button = QtWidgets.QPushButton('Add')
         self.add_button.clicked.connect(self.add_plot)
         self.addWidget(self.add_button, row=0, col=2)
 
@@ -93,6 +93,8 @@ class PlotDistanceV2(pg.LayoutWidget):
         self.dist_prev_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[self.type]
         if _current_size_distance <= 0:
             return
+        elif _current_size_distance > TRAIL_LENGTH:
+            _current_size_distance = TRAIL_LENGTH
 
         _change_box = False
         for _idx in np.arange(_current_size_distance):
@@ -129,7 +131,7 @@ class PlotDistanceV2(pg.LayoutWidget):
                 self.twr_ordered_data[_pairs_idx].append([_timestamp, _distance])
                 self.quality_ordered_data[_pairs_idx].append([_timestamp, _quality])
 
-            if len(self.twr_ordered_data[_pairs_idx]) > 0:
+            if len(self.twr_ordered_data[_pairs_idx]) > 1:
                 self.twr_plot_line[_pairs_idx].setData(np.array(self.twr_ordered_data[_pairs_idx])[:,0], np.array(self.twr_ordered_data[_pairs_idx])[:,1])
                 self.quality_plot_line[_pairs_idx].setData(np.array(self.quality_ordered_data[_pairs_idx])[:,0], np.array(self.quality_ordered_data[_pairs_idx])[:,1])
 

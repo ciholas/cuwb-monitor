@@ -4,7 +4,7 @@
 # System libraries
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtCore
 
 # Local libraries
 from cdp import UserDefinedV1
@@ -12,12 +12,12 @@ from network_objects import *
 from settings import *
 
 
-class PlotUserData(pg.GraphicsWindow):
+class PlotUserData(pg.GraphicsLayoutWidget):
     type = UserDefinedV1.type
 
     def __init__(self, serial):
 
-        pg.GraphicsWindow.__init__(self)
+        pg.GraphicsLayoutWidget.__init__(self)
         self.serial = serial
 
         self.setWindowTitle('CUWB Monitor - User Data Plot ID: 0x{:08X}'.format(self.serial))
@@ -40,11 +40,14 @@ class PlotUserData(pg.GraphicsWindow):
 
         _current_size = UwbNetwork.nodes[self.serial].cdp_pkts_count[UserDefinedV1.type] - self.last_count
         self.last_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[UserDefinedV1.type]
+        if _current_size > TRAIL_LENGTH:
+            _current_size = TRAIL_LENGTH
+
         for idx in range(_current_size):
             self.data.append(len(UwbNetwork.nodes[self.serial].cdp_pkts[UserDefinedV1.type][idx - _current_size].payload))
             self.time.append(UwbNetwork.nodes[self.serial].cdp_pkts_time[UserDefinedV1.type][idx - _current_size])
 
-        if _current_size > 0: self.payload_data.setData(np.array(self.time), np.array(self.data))
+        if _current_size > 1: self.payload_data.setData(np.array(self.time), np.array(self.data))
 
     def closeEvent(self, e):
         self.killTimer(self.timer)

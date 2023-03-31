@@ -2,6 +2,7 @@
 # Licensed under: creativecommons.org/licenses/by/4.0
 
 # System libraries
+import sys
 import socket
 import struct
 import time
@@ -28,7 +29,14 @@ class SocketProcessing(QtCore.QThread):
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         if ipaddress.ip_address(ip).is_multicast:
-            self.sock.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(ip)+socket.inet_aton(interface))
+            try :
+                self.sock.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(ip)+socket.inet_aton(interface))
+            except OSError as ose :
+                if sys.platform == 'win32' and socket.SOL_IP != 0 :
+                    self.sock.setsockopt(0, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(ip)+socket.inet_aton(interface))
+                else :
+                    print("Socket configuration error when setting up ListenSocket with IP:{} INTERFACE:{} and PORT:{}".format(ip, interface, port) )
+                    print(ose)
 
         if sys.platform == 'win32': self.sock.bind((interface, port))
         else:                       self.sock.bind((ip, port))
@@ -48,7 +56,6 @@ class SocketProcessing(QtCore.QThread):
 
     def wait(self):
         self._stopevent = True
-        super().wait()
 
     def __del__(self):
         self.wait()
@@ -87,11 +94,10 @@ class CdpProcess(SocketProcessing):
                 Node(packet.serial_number.as_int)
 
             for data_item in packet.data_items:
-                UwbNetwork.nodes[packet.serial_number.as_int].update(data_item, data_item.di_name, time.time())
+                UwbNetwork.nodes[packet.serial_number.as_int].update(data_item, data_item.di_name, time.monotonic())
 
     def wait(self):
         self._stopevent = True
-        QtCore.QThread.wait(self)
 
     def __del__(self):
         self.wait()

@@ -8,14 +8,14 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtWidgets, QtCore
 
 # Local libraries
-from cdp import MagnetometerV2
+from cdp import MagnetometerV3
 from network_objects import *
 from rolling_std import *
 from settings import *
 
 
-class PlotMagnetometerV2(QtWidgets.QMainWindow):
-    type = MagnetometerV2.type
+class PlotMagnetometerV3(QtWidgets.QMainWindow):
+    type = MagnetometerV3.type
 
     def __init__(self, serial):
 
@@ -23,7 +23,7 @@ class PlotMagnetometerV2(QtWidgets.QMainWindow):
 
         self.central = QtWidgets.QWidget()  #This will be our central widget
         self.serial = serial
-        self.setWindowTitle('CUWB Monitor - Magnetometer V2 Devices ID: 0x{:08X}'.format(serial))
+        self.setWindowTitle('CUWB Monitor - Magnetometer V3 Devices ID: 0x{:08X}'.format(serial))
         self.grid_layout = QtWidgets.QGridLayout()
 
         self.sub_windows = dict([])
@@ -124,7 +124,7 @@ class PlotMagnetometerV2(QtWidgets.QMainWindow):
             self.from_id_freq_labels[_row].setText('{:5.1f}Hz'.format(_freq))
 
     def labelClickEvent(self, serial, e):
-        self.sub_windows.update([(serial, PlotMagnetV2SubWindow(serial, self))])
+        self.sub_windows.update([(serial, PlotMagnetV3SubWindow(serial, self))])
         self.sub_windows[serial].show();
 
     def reset(self):
@@ -136,12 +136,12 @@ class PlotMagnetometerV2(QtWidgets.QMainWindow):
         self.previous_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[self.type]
 
 
-class PlotMagnetV2SubWindow(pg.GraphicsLayoutWidget):
+class PlotMagnetV3SubWindow(pg.GraphicsLayoutWidget):
 
     def __init__(self, serial, parent):
 
         pg.GraphicsLayoutWidget.__init__(self)
-        self.setWindowTitle('CUWB Monitor - Magnetometer V2 Plot ID: 0x{:08X}'.format(serial))
+        self.setWindowTitle('CUWB Monitor - Magnetometer V3 Plot ID: 0x{:08X}'.format(serial))
         self.serial = serial
         self.resize(1200, 1025)
         self.parent = parent

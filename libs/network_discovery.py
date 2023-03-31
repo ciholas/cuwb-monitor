@@ -212,7 +212,15 @@ class ListenSocket():
         for ifc in netifaces.interfaces():
             for ifc_info in netifaces.ifaddresses(ifc).get(netifaces.AF_INET, []):
                 if 'addr' in ifc_info:
-                    self.socket.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(group) + socket.inet_aton(ifc_info['addr']))
+                    try :
+                        self.socket.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(group) + socket.inet_aton(ifc_info['addr']))
+                    except OSError as ose :
+                        if sys.platform == 'win32' and socket.SOL_IP != 0 :
+                            self.socket.setsockopt(0, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(group) + socket.inet_aton(ifc_info['addr']))
+                        else :
+                            print("Socket configuration error when setting up ListenSocket with IP:{} INTERFACE:{} and PORT:{}".format(group, ifc_info['addr'], port) )
+                            print(ose)
+                            continue
 
     def __del__(self):
         self.socket.close()

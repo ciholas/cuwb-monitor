@@ -4,7 +4,7 @@
 # System libraries
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtCore
 
 # Local libraries
 from cdp import MPUAccelerometerV2
@@ -12,12 +12,12 @@ from network_objects import *
 from settings import *
 
 
-class PlotAccel(pg.GraphicsWindow):
+class PlotAccel(pg.GraphicsLayoutWidget):
     type = MPUAccelerometerV2.type
 
     def __init__(self, serial):
 
-        pg.GraphicsWindow.__init__(self)
+        pg.GraphicsLayoutWidget.__init__(self)
 
         self.setWindowTitle('CUWB Monitor - Position Accel Plot ID: 0x{:08X}'.format(serial))
         self.resize(900, 500)
@@ -54,13 +54,19 @@ class PlotAccel(pg.GraphicsWindow):
             self.data.append(UwbNetwork.nodes[self.serial].cdp_pkts[MPUAccelerometerV2.type][idx - _current_size].get_xyz())
             self.time.append(UwbNetwork.nodes[self.serial].cdp_pkts_time[MPUAccelerometerV2.type][idx - _current_size])
 
-        _data = np.array(self.data)
-        _times = np.array(self.time)
-        self.x.setData(_times, _data[:,0])
-        self.y.setData(_times, _data[:,1])
-        self.z.setData(_times, _data[:,2])
+        if len(self.data) > 1:
+            _data = np.array(self.data)
+            _times = np.array(self.time)
+            self.x.setData(_times, _data[:,0])
+            self.y.setData(_times, _data[:,1])
+            self.z.setData(_times, _data[:,2])
 
 
     def closeEvent(self, e):
         self.killTimer(self.timer)
         self.close()
+
+    def reset(self):
+        self.last_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[MPUAccelerometerV2.type]
+        self.data.clear()
+        self.time.clear()

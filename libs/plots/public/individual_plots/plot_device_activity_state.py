@@ -5,7 +5,7 @@
 from functools import partial
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtWidgets, QtCore
 
 # Local libraries
 from cdp import DeviceActivityState
@@ -13,18 +13,19 @@ from network_objects import *
 from settings import *
 
 
-class PlotDeviceActivityState(QtGui.QMainWindow):
+class PlotDeviceActivityState(QtWidgets.QMainWindow):
     type = DeviceActivityState.type
 
     def __init__(self, serial):
 
-        QtGui.QMainWindow.__init__(self)
+        QtWidgets.QMainWindow.__init__(self)
 
-        self.central = QtGui.QScrollArea()
-        self.central_inner_widget = QtGui.QWidget()
+        self.central = QtWidgets.QScrollArea()
+        self.central.setWidgetResizable(True)
+        self.central_inner_widget = QtWidgets.QWidget()
         self.serial = serial
         self.setWindowTitle('CUWB Monitor - Device Activity State Plotter ID: 0x{:08X}'.format(serial))
-        self.grid_layout = QtGui.QGridLayout()
+        self.grid_layout = QtWidgets.QGridLayout()
         self.running = True
 
         self.sub_windows = dict([])
@@ -40,18 +41,21 @@ class PlotDeviceActivityState(QtGui.QMainWindow):
         self.from_id_frequency_deques = dict()
         self.previous_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[DeviceActivityState.type] - len(UwbNetwork.nodes[self.serial].cdp_pkts[DeviceActivityState.type])
 
-        self.grid_layout.addWidget(QtGui.QLabel('Serial #'), 0, 0)
-        self.grid_layout.addWidget(QtGui.QLabel('Packet Count'), 0, 1)
-        self.grid_layout.addWidget(QtGui.QLabel('Frequency'), 0, 2)
-        self.grid_layout.addWidget(QtGui.QLabel('Print'), 0, 3)
+        self.grid_layout.addWidget(QtWidgets.QLabel('Serial #'), 0, 0)
+        self.grid_layout.addWidget(QtWidgets.QLabel('Packet Count'), 0, 1)
+        self.grid_layout.addWidget(QtWidgets.QLabel('Frequency'), 0, 2)
+        self.grid_layout.addWidget(QtWidgets.QLabel('Print'), 0, 3)
 
         self.update_labels()
+        #This allows for a dynamic window size where the number of serials already in the window after
+        #one pass affects the size of the serial choice window.
+        row_height = 20
+        self.resize(400, row_height+(row_height * len(self.from_id_id_labels)))
 
         self.central_inner_widget.setLayout(self.grid_layout)
         self.central.setWidget(self.central_inner_widget)
 
         self.setCentralWidget(self.central)
-        self.resize(400, 400)
 
         self.timer = self.startTimer(QPLOT_FREQUENCY)
 
@@ -75,10 +79,10 @@ class PlotDeviceActivityState(QtGui.QMainWindow):
         for idx in range(current_size):
             target_id = UwbNetwork.nodes[self.serial].cdp_pkts[self.type][idx - current_size].serial_number.as_int
             if not (target_id in self.from_ids):
-                self.from_id_id_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_count_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_freq_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_enable_checks.update([(self.id_total, QtGui.QCheckBox())])
+                self.from_id_id_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_count_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_freq_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_enable_checks.update([(self.id_total, QtWidgets.QCheckBox())])
                 self.from_id_times.update([(target_id, deque([], TRAIL_LENGTH))])
                 self.from_id_frequency_deques.update([(target_id, deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH))])
                 self.from_id_count.update([(target_id, 0)])
@@ -93,10 +97,10 @@ class PlotDeviceActivityState(QtGui.QMainWindow):
 
                 if column > 0:
                     row = 2
-                    self.grid_layout.addWidget(QtGui.QLabel("Serial #"), row, column + 0)
-                    self.grid_layout.addWidget(QtGui.QLabel("Packet Count"), row, column + 1)
-                    self.grid_layout.addWidget(QtGui.QLabel("Frequency"), row, column + 2)
-                    self.grid_layout.addWidget(QtGui.QLabel("Print"), row, column + 3)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Serial #"), row, column + 0)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Packet Count"), row, column + 1)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Frequency"), row, column + 2)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Print"), row, column + 3)
                 self.id_total += 1
 
             self.from_id_times[target_id].append(UwbNetwork.nodes[self.serial].cdp_pkts_time[self.type][idx - current_size])
@@ -113,13 +117,13 @@ class PlotDeviceActivityState(QtGui.QMainWindow):
                 self.sub_windows[target_id].updateData(packet)
 
         for target_id in self.from_ids:
-            self.from_id_frequency_deques[target_id].append((self.from_id_count[target_id], time.time()))
+            self.from_id_frequency_deques[target_id].append((self.from_id_count[target_id], time.monotonic()))
 
         for row in range(self.id_total):
             target_id = int(self.from_ids[row])
             if self.from_id_id_labels[row].text() != '0x{:08X}'.format(target_id):
                 self.from_id_id_labels[row].setText('0x{:08X}'.format(target_id))
-                self.from_id_id_labels[row].setStyleSheet('color:blue')
+                self.from_id_id_labels[row].setStyleSheet(GetClickableColor())
                 self.from_id_id_labels[row].mouseReleaseEvent = partial(self.labelClickEvent, target_id)
 
             if len(self.from_id_times[target_id]) == 0:
@@ -137,10 +141,10 @@ class PlotDeviceActivityState(QtGui.QMainWindow):
             self.from_id_count[target_id] = 0
             self.from_id_frequency_deques[target_id] = deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH)
 
-class PlotDeviceActivityStateSubWindow(pg.GraphicsWindow):
+class PlotDeviceActivityStateSubWindow(pg.GraphicsLayoutWidget):
 
     def __init__(self, serial, parent):
-        pg.GraphicsWindow.__init__(self)
+        pg.GraphicsLayoutWidget.__init__(self)
         self.show()
         self.setWindowTitle('CUWB Monitor - Device Activity State ID: 0x{:08X}'.format(serial))
         self.parent = parent

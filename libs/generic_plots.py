@@ -5,24 +5,25 @@
 from functools import partial
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtCore, QtWidgets
 
 # Local libraries
 from network_objects import *
 from settings import *
 
-class PlotStatMonitorSubWindow(pg.GraphicsWindow):
+class PlotStatMonitorSubWindow(pg.GraphicsLayoutWidget):
 
     def __init__(self, serial, type_name, data_label, feature):
         self.type_name = type_name
         self.feature = feature
+        self.data_label = data_label
         self.running = True
 
-        pg.GraphicsWindow.__init__(self)
+        pg.GraphicsLayoutWidget.__init__(self)
         length = 900
         width = 500
 
-        self.setWindowTitle('Cuwb Monitor - {} Plot ID: 0x{:08X}'.format(data_label, serial))
+        self.setWindowTitle('Cuwb Monitor - {} Plot ID: 0x{:08X}'.format(self.data_label, serial))
         self.resize(length, width)
         self.serial = serial
 
@@ -30,7 +31,7 @@ class PlotStatMonitorSubWindow(pg.GraphicsWindow):
 
         self.graph = self.addPlot(title='')
         self.graph.showGrid(x=True, y=True)
-        self.plot= self.graph.plot(pen='b', name=data_label)
+        self.plot= self.graph.plot(pen='b', name=self.data_label)
 
         self.last_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[self.type_name.type]
         self.data = deque([], TRAIL_LENGTH)
@@ -58,6 +59,7 @@ class PlotStatMonitorSubWindow(pg.GraphicsWindow):
 
     def closeEvent(self, e):
         self.killTimer(self.timer)
+        self.running = False
         self.close()
 
     def updateTime(self, _current_size):
@@ -69,20 +71,21 @@ class PlotStatMonitorSubWindow(pg.GraphicsWindow):
 
 
 def makeClickable(serial, label_to_change, data_label, feature, grid_row, type_name, sub_windows, col):
-    label_to_change.setStyleSheet('color:blue')
+    label_to_change.setStyleSheet(GetClickableColor())
     label_to_change.mouseReleaseEvent = partial(labelClickEvent, serial, data_label, feature, type_name, sub_windows)
     grid_row.addWidget(label_to_change, 0, col)
 
 def labelClickEvent(serial, data_label, feature, type_name, sub_windows, e):
     sub_windows.update([(data_label, PlotStatMonitorSubWindow(serial, type_name, data_label, feature))])
+    sub_windows[data_label].show();
 
 def createRows(widgets_array, grid_rows, grid_main, row_idx, total_rows):
     while len(widgets_array) < total_rows:
-        row_widget = QtGui.QWidget()
-        grid_row_layout = QtGui.QGridLayout()
+        row_widget = QtWidgets.QWidget()
+        grid_row_layout = QtWidgets.QGridLayout()
         grid_row_layout.setHorizontalSpacing(0)
         grid_row_layout.setVerticalSpacing(0)
-        grid_row_layout.setMargin(0)
+        grid_row_layout.setSpacing(0)
         row_widget.setLayout(grid_row_layout)
         widgets_array.append(row_widget)
         grid_rows.append(grid_row_layout)
@@ -91,7 +94,7 @@ def createRows(widgets_array, grid_rows, grid_main, row_idx, total_rows):
 
 def createLabels(label_array, total_clickable):
     while len(label_array) < total_clickable:
-        label = QtGui.QLabel();
+        label = QtWidgets.QLabel();
         label_array.append(label)
 
 def assignLabelText(item_array, label_array):
@@ -109,7 +112,7 @@ def removeClickable(label_to_change_array, item_to_change_array):
 
 def remakeClickable(label_to_change_array, item_to_change_array):
     for changed_idx in range(len(label_to_change_array)):
-        label_to_change_array[changed_idx].setStyleSheet('color:blue')
+        label_to_change_array[changed_idx].setStyleSheet(GetClickableColor())
         label_to_change_array[changed_idx].setEnabled(True)
 
     assignLabelText(item_to_change_array, label_to_change_array)

@@ -9,7 +9,7 @@ TIME_RANGE = 30
 import pyqtgraph as pg
 from collections import deque
 from functools import partial
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtWidgets, QtCore
 from random import randint
 
 # Local libraries
@@ -17,17 +17,18 @@ from cdp import *
 from network_objects import *
 from settings import *
 
-class PlotDistanceToNeighboringAnchors(QtGui.QMainWindow):
+class PlotDistanceToNeighboringAnchors(QtWidgets.QMainWindow):
     type = 'DistanceToNeighboringAnchorsPlot'
 
     def __init__(self):
 
-        QtGui.QMainWindow.__init__(self)
+        QtWidgets.QMainWindow.__init__(self)
 
-        self.central = QtGui.QScrollArea()
-        self.central_inner_widget = QtGui.QWidget()
+        self.central = QtWidgets.QScrollArea()
+        self.central.setWidgetResizable(True)
+        self.central_inner_widget = QtWidgets.QWidget()
         self.setWindowTitle('CUWB Monitor - Distance to Neighboring Anchors')
-        self.grid_layout = QtGui.QGridLayout()
+        self.grid_layout = QtWidgets.QGridLayout()
         self.running = True
 
         self.sub_windows = dict([])
@@ -46,10 +47,10 @@ class PlotDistanceToNeighboringAnchors(QtGui.QMainWindow):
         self.device_roles_count = dict()
         self.update_labels()
 
-        self.grid_layout.addWidget(QtGui.QLabel("Serial#"), 0, 0)
-        self.grid_layout.addWidget(QtGui.QLabel("Packet Count"), 0, 1)
-        self.grid_layout.addWidget(QtGui.QLabel("Frequency"), 0, 2)
-        self.grid_layout.addWidget(QtGui.QLabel("Print"), 0, 3)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Serial#"), 0, 0)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Packet Count"), 0, 1)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Frequency"), 0, 2)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Print"), 0, 3)
 
         self.central_inner_widget.setLayout(self.grid_layout)
         self.central.setWidget(self.central_inner_widget)
@@ -86,10 +87,10 @@ class PlotDistanceToNeighboringAnchors(QtGui.QMainWindow):
             for idx in range(current_size):
                 target_id = UwbNetwork.nodes[serial].cdp_pkts[DistanceV2.type][idx - current_size].serial_number_1.as_int
                 if not target_id in self.from_ids:
-                    self.from_id_id_labels.update([(self.id_total, QtGui.QLabel())])
-                    self.from_id_count_labels.update([(self.id_total, QtGui.QLabel())])
-                    self.from_id_freq_labels.update([(self.id_total, QtGui.QLabel())])
-                    self.from_id_enable_checks.update([(self.id_total, QtGui.QCheckBox())])
+                    self.from_id_id_labels.update([(self.id_total, QtWidgets.QLabel())])
+                    self.from_id_count_labels.update([(self.id_total, QtWidgets.QLabel())])
+                    self.from_id_freq_labels.update([(self.id_total, QtWidgets.QLabel())])
+                    self.from_id_enable_checks.update([(self.id_total, QtWidgets.QCheckBox())])
                     self.from_id_count.update([(target_id, 0)])
                     self.from_id_frequency_deques.update([(target_id, deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH))])
                     self.from_ids = np.sort(np.append(self.from_ids, target_id))
@@ -127,14 +128,14 @@ class PlotDistanceToNeighboringAnchors(QtGui.QMainWindow):
                     self.from_id_roles[target_id] = False
 
         for target_id in self.from_ids:
-            self.from_id_frequency_deques[target_id].append((self.from_id_count[target_id], time.time()))
+            self.from_id_frequency_deques[target_id].append((self.from_id_count[target_id], time.monotonic()))
 
         networks = list(self.network_serials.keys())
         for row in range(self.id_total):
             target_id = int(self.from_ids[row])
             if self.from_id_id_labels[row].text() != '0x{:08X}'.format(target_id):
                 self.from_id_id_labels[row].setText('0x{:08X}'.format(target_id))
-                self.from_id_id_labels[row].setStyleSheet('color:blue')
+                self.from_id_id_labels[row].setStyleSheet(GetClickableColor())
                 self.from_id_id_labels[row].mouseReleaseEvent = partial(self.labelClickEvent, target_id)
 
             freq = UwbNetwork.nodes[networks[0]].calculate_frequency(self.from_id_frequency_deques[target_id])
@@ -164,7 +165,6 @@ class PlotDistanceToNeighboringAnchorsSubWindow(pg.LayoutWidget):
         self.parent = parent
         self.recent_timestamp = 0
 
-        self.devices = np.array([])
         self.device_anchor = dict()
         self.device_distances = dict()
         self.device_qualities = dict()
@@ -197,45 +197,46 @@ class PlotDistanceToNeighboringAnchorsSubWindow(pg.LayoutWidget):
             serial = packet.serial_number_2
         else:
             serial = packet.serial_number_1
-        if self.parent.from_id_roles[serial]:
-            if serial not in self.devices:
-                self.devices = np.append(self.devices, serial)
-                self.device_distances.update([(serial, deque([], TRAIL_LENGTH))])
-                self.device_qualities.update([(serial, deque([], TRAIL_LENGTH))])
-                self.device_timestamps.update([(serial, deque([], TRAIL_LENGTH))])
-                color = self.colors[self.color_offset % len(self.colors)]
-                original_color_offset = self.color_offset
-                while color in self.colors_used:
-                    self.color_offset += 1
-                    if self.color_offset > len(self.colors):
-                        self.color_offset = 0
-                    if self.color_offset == original_color_offset:
-                        color = (randint(0, 255), randint(0, 255), randint(0, 255))
-                        break
+        if serial in self.parent.from_id_roles:
+            if self.parent.from_id_roles[serial]:
+                if serial not in self.device_distances.keys():
+                    self.device_distances.update([(serial, deque([], TRAIL_LENGTH))])
+                    self.device_qualities.update([(serial, deque([], TRAIL_LENGTH))])
+                    self.device_timestamps.update([(serial, deque([], TRAIL_LENGTH))])
                     color = self.colors[self.color_offset % len(self.colors)]
-                self.colors_used.append(color)
-                self.device_colors.update([(serial, color)])
-                self.device_distance_plots.update([(serial, self.graph_distance.plot(pen=pg.mkPen(color, width=2)))])
-                self.device_quality_plots.update([(serial, self.graph_quality.plot(pen=pg.mkPen(color, width=2)))])
-                if self.color_offset < len(self.colors):
-                    self.color_offset += 1
-                self.distance_legend.addItem(self.device_distance_plots[serial], '0x{:08X}'.format(serial.as_int))
-            self.device_distances[serial].append(packet.distance / 1000.0)
-            self.device_qualities[serial].append(packet.quality)
-            self.device_timestamps[serial].append(timestamp)
+                    original_color_offset = self.color_offset
+                    while color in self.colors_used:
+                        self.color_offset += 1
+                        if self.color_offset > len(self.colors):
+                            self.color_offset = 0
+                        if self.color_offset == original_color_offset:
+                            color = (randint(0, 255), randint(0, 255), randint(0, 255))
+                            break
+                        color = self.colors[self.color_offset % len(self.colors)]
+                    self.colors_used.append(color)
+                    self.device_colors.update([(serial, color)])
+                    self.device_distance_plots.update([(serial, self.graph_distance.plot(pen=pg.mkPen(color, width=2)))])
+                    self.device_quality_plots.update([(serial, self.graph_quality.plot(pen=pg.mkPen(color, width=2)))])
+                    if self.color_offset < len(self.colors):
+                        self.color_offset += 1
+                    self.distance_legend.addItem(self.device_distance_plots[serial], '0x{:08X}'.format(serial.as_int))
+                self.device_distances[serial].append(packet.distance / 1000.0)
+                self.device_qualities[serial].append(packet.quality)
+                self.device_timestamps[serial].append(timestamp)
 
-            self.device_distance_plots[serial].setData(self.device_timestamps[serial], self.device_distances[serial])
-            self.device_quality_plots[serial].setData(self.device_timestamps[serial], self.device_qualities[serial])
+                if len(self.device_timestamps[serial]) > 1:
+                    self.device_distance_plots[serial].setData(self.device_timestamps[serial], self.device_distances[serial])
+                    self.device_quality_plots[serial].setData(self.device_timestamps[serial], self.device_qualities[serial])
 
-            if timestamp > self.recent_timestamp:
-                self.recent_timestamp = timestamp
+                if timestamp > self.recent_timestamp:
+                    self.recent_timestamp = timestamp
 
     def timerEvent(self, e):
         if not UwbNetwork.running or not self.parent.running:
             self.close()
             return
 
-        for device in self.devices:
+        for device in self.device_distances.keys():
             if self.device_timestamps[device][-1] < (self.recent_timestamp - TIME_RANGE):
                 self.device_distance_plots[device].clear()
                 self.device_quality_plots[device].clear()
@@ -247,17 +248,16 @@ class PlotDistanceToNeighboringAnchorsSubWindow(pg.LayoutWidget):
                 del self.device_quality_plots[device]
                 self.colors_used.remove(self.device_colors[device])
                 del self.device_colors[device]
-                self.devices = np.delete(self.devices, np.argwhere(self.devices==device))
 
     def closeEvent(self, e):
         self.killTimer(self.timer)
         self.running = False
 
     def reset(self):
-        for device in self.devices:
+        for device in self.device_distance_plots.keys():
             self.device_distance_plots[device].clear()
             self.device_quality_plots[device].clear()
-        self.devices = np.array([])
+            self.distance_legend.removeItem('0x{:08X}'.format(device.as_int))
         self.device_distances = dict()
         self.device_qualities = dict()
         self.device_timestamps = dict()

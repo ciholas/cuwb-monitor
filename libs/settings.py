@@ -31,3 +31,24 @@ USEC_PER_DECATICK = MSEC_PER_DECATICK * 1e3
 
 UNKNOWN_FILTER_TYPE = 65535
 UNKNOWN_FILTER_NAME = 'Unknown'
+
+global clickable_color;
+clickable_color = "color : blue"
+global title_color
+title_color = "color : black"
+
+def GetClickableColor():
+    global clickable_color;
+    return clickable_color
+
+def SetClickableColor(color):
+    global clickable_color 
+    clickable_color = color
+
+def GetTitleColor():
+    global title_color
+    return title_color
+
+def SetTitleColor(color):
+    global title_color
+    title_color = color

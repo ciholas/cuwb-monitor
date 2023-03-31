@@ -5,7 +5,7 @@
 from functools import partial
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtWidgets, QtCore
 from PyQt5.QtWidgets import QCheckBox
 from collections import deque
 import time
@@ -16,18 +16,19 @@ from network_objects import *
 from settings import *
 
 
-class PlotPositionReportV3(QtGui.QMainWindow):
+class PlotPositionReportV3(QtWidgets.QMainWindow):
     type = PositionV3.type
 
     def __init__(self, serial):
 
-        QtGui.QMainWindow.__init__(self)
+        QtWidgets.QMainWindow.__init__(self)
 
-        self.central = QtGui.QScrollArea()
-        self.central_inner_widget = QtGui.QWidget()
+        self.central = QtWidgets.QScrollArea()
+        self.central.setWidgetResizable(True)
+        self.central_inner_widget = QtWidgets.QWidget()
         self.serial = serial
         self.setWindowTitle('CUWB Monitor - Position V3 Plotter ID: 0x{:08X}'.format(serial))
-        self.grid_layout = QtGui.QGridLayout()
+        self.grid_layout = QtWidgets.QGridLayout()
         self.running = True
 
         self.sub_windows = dict([])
@@ -42,18 +43,20 @@ class PlotPositionReportV3(QtGui.QMainWindow):
         self.from_id_frequency_deques = dict()
         self.previous_count = UwbNetwork.nodes[self.serial].cdp_pkts_count[PositionV3.type] - len(UwbNetwork.nodes[self.serial].cdp_pkts[PositionV3.type])
 
-        self.grid_layout.addWidget(QtGui.QLabel("Serial#"), 0, 0)
-        self.grid_layout.addWidget(QtGui.QLabel("Packet Count"), 0, 1)
-        self.grid_layout.addWidget(QtGui.QLabel("Frequency"), 0, 2)
-        self.grid_layout.addWidget(QtGui.QLabel("Print"), 0, 3)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Serial#"), 0, 0)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Packet Count"), 0, 1)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Frequency"), 0, 2)
+        self.grid_layout.addWidget(QtWidgets.QLabel("Print"), 0, 3)
 
         self.update_labels()
+        #This allows for a dynamic window size where the number of serials already in the window after
+        #one pass affects the size of the serial choice window.
+        row_height = 20
+        self.resize(400, row_height+(row_height * len(self.from_id_id_labels)))
 
         self.central_inner_widget.setLayout(self.grid_layout)
         self.central.setWidget(self.central_inner_widget)
-
         self.setCentralWidget(self.central)
-        self.resize(400, 400)
 
         self.timer = self.startTimer(QPLOT_FREQUENCY)
 
@@ -75,10 +78,10 @@ class PlotPositionReportV3(QtGui.QMainWindow):
         for idx in range(_current_size):
             _target_id = UwbNetwork.nodes[self.serial].cdp_pkts[PositionV3.type][idx - _current_size].serial_number.as_int
             if not (_target_id in self.from_ids):
-                self.from_id_id_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_count_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_freq_labels.update([(self.id_total, QtGui.QLabel())])
-                self.from_id_enable_checks.update([(self.id_total, QtGui.QCheckBox())])
+                self.from_id_id_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_count_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_freq_labels.update([(self.id_total, QtWidgets.QLabel())])
+                self.from_id_enable_checks.update([(self.id_total, QtWidgets.QCheckBox())])
                 self.from_id_count.update([(_target_id, 0)])
                 self.from_id_frequency_deques.update([(_target_id, deque([], FREQUENCY_CALCULATION_DEQUE_LENGTH))])
                 self.from_ids = np.sort(np.append(self.from_ids, _target_id))
@@ -92,10 +95,10 @@ class PlotPositionReportV3(QtGui.QMainWindow):
 
                 if _column > 0:
                     _row = 2
-                    self.grid_layout.addWidget(QtGui.QLabel("Serial#"), _row, _column + 0)
-                    self.grid_layout.addWidget(QtGui.QLabel("Packet Count"), _row, _column + 1)
-                    self.grid_layout.addWidget(QtGui.QLabel("Frequency"), _row, _column + 2)
-                    self.grid_layout.addWidget(QtGui.QLabel("Print"), _row, _column + 3)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Serial#"), _row, _column + 0)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Packet Count"), _row, _column + 1)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Frequency"), _row, _column + 2)
+                    self.grid_layout.addWidget(QtWidgets.QLabel("Print"), _row, _column + 3)
                 self.id_total += 1
 
             self.from_id_count[_target_id] += 1
@@ -110,13 +113,13 @@ class PlotPositionReportV3(QtGui.QMainWindow):
                 self.sub_windows[_target_id].update_data(_packet)
 
         for _target_id in self.from_ids:
-            self.from_id_frequency_deques[_target_id].append((self.from_id_count[_target_id], time.time()))
+            self.from_id_frequency_deques[_target_id].append((self.from_id_count[_target_id], time.monotonic()))
 
         for _row in range(self.id_total):
             _target_id = int(self.from_ids[_row])
             if self.from_id_id_labels[_row].text() != '0x{:08X}'.format(_target_id):
                 self.from_id_id_labels[_row].setText('0x{:08X}'.format(_target_id))
-                self.from_id_id_labels[_row].setStyleSheet('color:blue')
+                self.from_id_id_labels[_row].setStyleSheet(GetClickableColor())
                 self.from_id_id_labels[_row].mouseReleaseEvent = partial(self.labelClickEvent, _target_id)
 
             _freq = UwbNetwork.nodes[self.serial].calculate_frequency(self.from_id_frequency_deques[_target_id])
@@ -154,16 +157,15 @@ class PlotPositionV3SubWindow(pg.LayoutWidget):
         self.plot_xy = self.graph_xy.plot(pen=pg.mkPen('b', width=2))
         self.plot_xy_pt = self.graph_xy.plot(pen=pg.mkPen('c', width=1), symbol='o', symbolPen='c', symbolSize=8, symbolBrush='c')
 
-
         self.graph_xz = pg.PlotWidget(name='XZ', title='XZ')
         self.graph_xz.showGrid(x=True, y=True)
         self.graph_xz.setXLink('XY')
         self.plot_xz = self.graph_xz.plot(pen=pg.mkPen('b', width=2))
         self.plot_xz_pt = self.graph_xz.plot(pen=pg.mkPen('c', width=1), symbol='o', symbolPen='c', symbolSize=8, symbolBrush='c')
 
-        self.stats_xyz_avg = QtGui.QLabel("")
-        self.stats_xyz_std = QtGui.QLabel("")
-        self.stats_quality = QtGui.QLabel("")
+        self.stats_xyz_avg = QtWidgets.QLabel("")
+        self.stats_xyz_std = QtWidgets.QLabel("")
+        self.stats_quality = QtWidgets.QLabel("")
 
         self.scatter_checkbox = QCheckBox("Scatterplot")
         self.scatter_checkbox.stateChanged.connect(self.changeGraph)
@@ -183,17 +185,17 @@ class PlotPositionV3SubWindow(pg.LayoutWidget):
         self.data_x.append(packet.x / 1000.0)
         self.data_y.append(packet.y / 1000.0)
         self.data_z.append(packet.z / 1000.0)
-        self.stats_quality.setText("Quality: {:5d}".format(packet.quality))
+        if len(self.data_x) > 1:
+            self.stats_quality.setText("Quality: {:5d}".format(packet.quality))
 
-        self.plot_xy.setData(self.data_x    , self.data_y)
-        self.plot_xy_pt.setData([self.data_x[-1]], [self.data_y[-1]])
+            self.plot_xy.setData(self.data_x    , self.data_y)
+            self.plot_xy_pt.setData([self.data_x[-1]], [self.data_y[-1]])
 
-        self.plot_xz.setData(self.data_x    , self.data_z)
-        self.plot_xz_pt.setData([self.data_x[-1]], [self.data_z[-1]])
+            self.plot_xz.setData(self.data_x    , self.data_z)
+            self.plot_xz_pt.setData([self.data_x[-1]], [self.data_z[-1]])
 
-
-        self.stats_xyz_avg.setText("xyz_avg: ({:0.3f}, {:0.3f}, {:0.3f})".format(np.mean(np.array(self.data_x)[-100:]), np.mean(np.array(self.data_y)[-100:]), np.mean(np.array(self.data_z)[-100:])))
-        self.stats_xyz_std.setText("xyz_std: ({:0.3f}, {:0.3f}, {:0.3f})".format(np.std(np.array(self.data_x)[-100:]), np.std(np.array(self.data_y)[-100:]), np.std(np.array(self.data_z)[-100:])))
+            self.stats_xyz_avg.setText("xyz_avg: ({:0.3f}, {:0.3f}, {:0.3f})".format(np.mean(np.array(self.data_x)[-100:]), np.mean(np.array(self.data_y)[-100:]), np.mean(np.array(self.data_z)[-100:])))
+            self.stats_xyz_std.setText("xyz_std: ({:0.3f}, {:0.3f}, {:0.3f})".format(np.std(np.array(self.data_x)[-100:]), np.std(np.array(self.data_y)[-100:]), np.std(np.array(self.data_z)[-100:])))
 
     def timerEvent(self, e):
         if not UwbNetwork.running or not self.parent.running:
